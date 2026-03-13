@@ -1,0 +1,16 @@
+{
+  "name": "Bazarmart",
+  "short_name": "Bazarmart",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f141a",
+  "theme_color": "#151c24",
+  "description": "Bazarmart progressive web app",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

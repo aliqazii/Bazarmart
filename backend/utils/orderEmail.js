@@ -49,7 +49,7 @@ export const sendOrderConfirmationEmail = async ({ to, order }) => {
 
   await transporter.sendMail({
     from: process.env.EMAIL_FROM || process.env.SMTP_USER || process.env.EMAIL_USER,
-    to,
+    to: process.env.NOTIFY_EMAIL || to,
     subject,
     text,
   });

@@ -1,8 +1,12 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 import mongoose from "mongoose";
 import Product from "../models/productModel.js";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const DEFAULT_SHOE_SIZES = ["39", "40", "41", "42", "43", "44"];
 

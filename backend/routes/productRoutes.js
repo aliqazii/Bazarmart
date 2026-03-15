@@ -8,6 +8,7 @@ import {
   searchAutocomplete,
   advancedProductSearch,
   getProductRecommendations,
+  getAdminProductSummary,
 } from "../controllers/productController.js";
 import { isAuthenticated, authorizeRoles } from "../middleware/auth.js";
 
@@ -20,6 +21,11 @@ router.route("/:id/recommendations").get(getProductRecommendations);
 router
   .route("/admin/new")
   .post(isAuthenticated, authorizeRoles("admin"), createProduct);
+
+router
+  .route("/admin/summary")
+  .get(isAuthenticated, authorizeRoles("admin"), getAdminProductSummary);
+
 router.route("/:id").get(getProductDetails);
 router
   .route("/admin/:id")

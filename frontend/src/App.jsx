@@ -1,6 +1,8 @@
 import { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -8,7 +10,6 @@ import AdminLayout from "./components/AdminLayout";
 import ScrollToTop from "./components/ScrollToTop";
 import SeoManager from "./components/SeoManager";
 import { AuthProvider } from "./context/AuthContext";
-import "./App.css";
 
 const Home = lazy(() => import("./pages/Home"));
 const Products = lazy(() => import("./pages/Products"));
@@ -47,14 +48,33 @@ const ChatBot = lazy(() => import("./components/ChatBot"));
 
 const RouteLoader = () => <div className="loader">Loading...</div>;
 
-function App() {
+const MotionRouteContainer = motion.div;
+
+function AnimatedRoutes() {
+  const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
+
+  const isAdmin = location.pathname.startsWith("/admin");
+  const yDistance = shouldReduceMotion ? 0 : isAdmin ? 0 : 10;
+  const duration = shouldReduceMotion ? 0.01 : isAdmin ? 0.14 : 0.22;
+
+  const rotateXIn = shouldReduceMotion ? 0 : isAdmin ? 3 : 12;
+  const rotateYIn = shouldReduceMotion ? 0 : isAdmin ? -3 : -10;
+  const zIn = shouldReduceMotion ? 0 : isAdmin ? -10 : -42;
+
   return (
-    <AuthProvider>
-      <Router>
-        <ScrollToTop />
-        <SeoManager />
-        <Suspense fallback={<RouteLoader />}>
-          <Routes>
+    <Suspense fallback={<RouteLoader />}>
+      <AnimatePresence mode="wait" initial={false}>
+        <div className="route-perspective">
+          <MotionRouteContainer
+            key={location.pathname}
+            initial={{ opacity: 0, y: yDistance, rotateX: rotateXIn, rotateY: rotateYIn, z: zIn, scale: shouldReduceMotion ? 1 : 0.988 }}
+            animate={{ opacity: 1, y: 0, rotateX: 0, rotateY: 0, z: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -yDistance, rotateX: -rotateXIn, rotateY: -rotateYIn, z: zIn, scale: shouldReduceMotion ? 1 : 0.99 }}
+            transition={{ duration, ease: "easeOut" }}
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <Routes location={location}>
             {/* Store Routes - with Header/Footer */}
             <Route path="/" element={<><Header /><main className="main-content"><Home /></main><Footer /></>} />
             <Route path="/products" element={<><Header /><main className="main-content"><Products /></main><Footer /></>} />
@@ -97,13 +117,36 @@ function App() {
             </Route>
 
             <Route path="*" element={<><Header /><main className="main-content"><NotFound /></main><Footer /></>} />
-          </Routes>
-        </Suspense>
-        <Toaster position="bottom-center" />
-        <Suspense fallback={null}>
-          <ChatBot />
-        </Suspense>
-      </Router>
+            </Routes>
+          </MotionRouteContainer>
+        </div>
+      </AnimatePresence>
+    </Suspense>
+  );
+}
+
+function App() {
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+  const app = (
+    <Router>
+      <ScrollToTop />
+      <SeoManager />
+      <AnimatedRoutes />
+      <Toaster position="bottom-center" />
+      <Suspense fallback={null}>
+        <ChatBot />
+      </Suspense>
+    </Router>
+  );
+
+  return (
+    <AuthProvider>
+      {googleClientId ? (
+        <GoogleOAuthProvider clientId={googleClientId}>{app}</GoogleOAuthProvider>
+      ) : (
+        app
+      )}
     </AuthProvider>
   );
 }

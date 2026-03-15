@@ -6,6 +6,8 @@ import ErrorHandler from "../utils/errorHandler.js";
 import catchAsync from "../middleware/catchAsync.js";
 import { sendOrderConfirmationEmail } from "../utils/orderEmail.js";
 
+const escapeRegExp = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // Create new Order
 export const newOrder = catchAsync(async (req, res, next) => {
   const {
@@ -21,22 +23,66 @@ export const newOrder = catchAsync(async (req, res, next) => {
     contactEmail,
   } = req.body;
 
-  // Verify stock availability and reduce stock immediately
+  // Resolve products + verify stock before making any stock changes
+  const resolvedProducts = new Map(); // productId -> productDoc
+  const quantityByProductId = new Map(); // productId -> totalQuantity
+
   for (const item of orderItems) {
-    const product = await Product.findById(item.product);
-    if (!product) {
+    let productDoc = null;
+
+    // Prefer id lookup
+    try {
+      if (item.product) {
+        productDoc = await Product.findById(item.product);
+      }
+    } catch {
+      productDoc = null;
+    }
+
+    // Fallback: exact name match (case-insensitive) for stale carts
+    if (!productDoc && item.name) {
+      const name = String(item.name).trim();
+      if (name) {
+        productDoc = await Product.findOne({ name: { $regex: `^${escapeRegExp(name)}$`, $options: "i" } });
+        if (!productDoc) {
+          productDoc = await Product.findOne({ name: { $regex: escapeRegExp(name), $options: "i" } });
+        }
+        if (productDoc) {
+          item.product = productDoc._id;
+        }
+      }
+    }
+
+    if (!productDoc) {
       return next(new ErrorHandler(`Product not found: ${item.name}`, 404));
     }
-    if (product.stock < item.quantity) {
+
+    const idKey = productDoc._id.toString();
+    resolvedProducts.set(idKey, productDoc);
+    quantityByProductId.set(idKey, (quantityByProductId.get(idKey) || 0) + Number(item.quantity || 0));
+  }
+
+  for (const [idKey, totalQty] of quantityByProductId.entries()) {
+    const productDoc = resolvedProducts.get(idKey) || (await Product.findById(idKey));
+    if (!productDoc) {
+      return next(new ErrorHandler("Product not found during stock validation", 404));
+    }
+
+    if (productDoc.stock < totalQty) {
       return next(
         new ErrorHandler(
-          `Insufficient stock for ${product.name}. Only ${product.stock} left.`,
+          `Insufficient stock for ${productDoc.name}. Only ${productDoc.stock} left.`,
           400
         )
       );
     }
-    product.stock -= item.quantity;
-    await product.save({ validateBeforeSave: false });
+  }
+
+  // Reduce stock only after all validations pass
+  for (const [idKey, totalQty] of quantityByProductId.entries()) {
+    const productDoc = resolvedProducts.get(idKey) || (await Product.findById(idKey));
+    productDoc.stock -= totalQty;
+    await productDoc.save({ validateBeforeSave: false });
   }
 
   const order = await Order.create({

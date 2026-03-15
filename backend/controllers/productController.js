@@ -1,5 +1,6 @@
 import Product from "../models/productModel.js";
 import ActivityLog from "../models/activityLogModel.js";
+import Review from "../models/reviewModel.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import catchAsync from "../middleware/catchAsync.js";
 
@@ -62,7 +63,55 @@ export const getAllProducts = catchAsync(async (req, res, next) => {
   const products = await Product.find(query)
     .sort(sortOption)
     .limit(resultsPerPage)
-    .skip(skip);
+    .skip(skip)
+    .lean();
+
+  // Optional: include a small preview of recent reviews per product (for cards/grids)
+  const includeTopReviews = String(req.query.includeTopReviews || "").toLowerCase();
+  if (includeTopReviews === "1" || includeTopReviews === "true" || includeTopReviews === "yes") {
+    const productIds = products.map((p) => p?._id).filter(Boolean);
+
+    if (productIds.length > 0) {
+      const previewAgg = await Review.aggregate([
+        { $match: { product: { $in: productIds } } },
+        { $sort: { createdAt: -1 } },
+        {
+          $lookup: {
+            from: "users",
+            localField: "user",
+            foreignField: "_id",
+            as: "user",
+          },
+        },
+        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            product: 1,
+            rating: 1,
+            comment: 1,
+            createdAt: 1,
+            user: { name: "$user.name" },
+          },
+        },
+        {
+          $group: {
+            _id: "$product",
+            topReviews: { $push: "$$ROOT" },
+          },
+        },
+        {
+          $project: {
+            topReviews: { $slice: ["$topReviews", 2] },
+          },
+        },
+      ]);
+
+      const previewByProductId = new Map(previewAgg.map((x) => [String(x._id), x.topReviews || []]));
+      products.forEach((p) => {
+        p.topReviews = previewByProductId.get(String(p._id)) || [];
+      });
+    }
+  }
 
   res.status(200).json({
     success: true,
@@ -120,6 +169,37 @@ export const advancedProductSearch = catchAsync(async (req, res) => {
   res.status(200).json({ success: true, products: ranked });
 });
 
+// Admin: product summary for dashboards (counts + category breakdown + low stock)
+export const getAdminProductSummary = catchAsync(async (req, res) => {
+  const productsCount = await Product.countDocuments({});
+
+  const productsByCategoryAgg = await Product.aggregate([
+    {
+      $group: {
+        _id: "$category",
+        value: { $sum: 1 },
+      },
+    },
+    { $sort: { value: -1 } },
+  ]);
+
+  const productsByCategory = productsByCategoryAgg
+    .filter((x) => x._id)
+    .map((x) => ({ name: x._id, value: x.value }));
+
+  const lowStockProducts = await Product.find({ stock: { $lte: 5 } })
+    .select("name images stock category")
+    .sort({ stock: 1, createdAt: -1 })
+    .limit(30);
+
+  res.status(200).json({
+    success: true,
+    productsCount,
+    productsByCategory,
+    lowStockProducts,
+  });
+});
+
 // Product Recommendations
 export const getProductRecommendations = catchAsync(async (req, res, next) => {
   const current = await Product.findById(req.params.id);
@@ -140,10 +220,23 @@ export const getProductRecommendations = catchAsync(async (req, res, next) => {
 
 // Get Product Details
 export const getProductDetails = catchAsync(async (req, res, next) => {
-  const product = await Product.findById(req.params.id);
+  const productDoc = await Product.findById(req.params.id);
 
-  if (!product) {
+  if (!productDoc) {
     return next(new ErrorHandler("Product not found", 404));
+  }
+
+  const product = productDoc.toObject();
+
+  const includeTopReviews = String(req.query.includeTopReviews || "").toLowerCase();
+  if (includeTopReviews === "1" || includeTopReviews === "true" || includeTopReviews === "yes") {
+    const topReviews = await Review.find({ product: product._id })
+      .populate("user", "name")
+      .sort({ createdAt: -1 })
+      .limit(2)
+      .select("rating comment createdAt user");
+
+    product.topReviews = topReviews;
   }
 
   res.status(200).json({

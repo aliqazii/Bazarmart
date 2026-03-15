@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaShoppingCart, FaUser, FaTachometerAlt, FaBars, FaTimes, FaStore, FaHeart, FaSearch } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect, useRef } from "react";
@@ -12,7 +12,9 @@ const Header = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const searchRef = useRef(null);
+  const prevCartCountRef = useRef(0);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -20,7 +22,16 @@ const Header = () => {
   useEffect(() => {
     const updateCount = () => {
       const cart = JSON.parse(localStorage.getItem("cart") || "[]");
-      setCartCount(cart.reduce((acc, item) => acc + item.quantity, 0));
+      const nextCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+      setCartCount(nextCount);
+
+      const prev = prevCartCountRef.current;
+      prevCartCountRef.current = nextCount;
+
+      // Arm CTA when count increases (item added). Actual visibility is computed from timestamps.
+      if (nextCount > prev && location.pathname !== "/cart") {
+        localStorage.setItem("lastCartAddAt", String(Date.now()));
+      }
     };
     updateCount();
     window.addEventListener("cartUpdated", updateCount);
@@ -29,7 +40,20 @@ const Header = () => {
       window.removeEventListener("cartUpdated", updateCount);
       window.removeEventListener("storage", updateCount);
     };
-  }, []);
+  }, [location.pathname]);
+
+  // Mark cart as viewed once it is opened.
+  useEffect(() => {
+    if (location.pathname === "/cart") {
+      localStorage.setItem("lastCartViewedAt", String(Date.now()));
+    }
+  }, [location.pathname]);
+
+  const showMobileCartCta = (() => {
+    const lastAddAt = Number(localStorage.getItem("lastCartAddAt") || 0);
+    const lastViewedAt = Number(localStorage.getItem("lastCartViewedAt") || 0);
+    return cartCount > 0 && location.pathname !== "/cart" && lastAddAt > lastViewedAt;
+  })();
 
   // Search autocomplete
   useEffect(() => {
@@ -131,6 +155,7 @@ const Header = () => {
         </div>
 
         <button
+          type="button"
           className="menu-toggle"
           onClick={() => setMenuOpen(!menuOpen)}
           aria-label="Toggle menu"
@@ -142,25 +167,29 @@ const Header = () => {
           <Link to="/" onClick={closeMenu}>Home</Link>
           <Link to="/products" onClick={closeMenu}>Products</Link>
           <Link to="/contact" onClick={closeMenu}>Contact</Link>
+          {user && <Link to="/orders" onClick={closeMenu}>Orders</Link>}
           <Link to="/cart" className="mobile-nav-link" onClick={closeMenu}>Cart</Link>
 
           <div className="nav-icon-group">
             {user && (
               <Link to="/wishlist" className="nav-icon-link wishlist-link" onClick={closeMenu}>
                 <FaHeart />
-                {wishlist.length > 0 && <span className="nav-badge">{wishlist.length}</span>}
+                {wishlist.length > 0 && (
+                  <span className="nav-badge">{wishlist.length}</span>
+                )}
               </Link>
             )}
 
             <Link to="/cart" className="nav-icon-link cart-link" onClick={closeMenu}>
               <FaShoppingCart />
-              {cartCount > 0 && <span className="nav-badge">{cartCount}</span>}
+              {cartCount > 0 && (
+                <span className="nav-badge">{cartCount}</span>
+              )}
             </Link>
           </div>
 
           {user ? (
             <>
-              <Link to="/orders" onClick={closeMenu}>Orders</Link>
               {user.role === "admin" && (
                 <Link to="/admin/dashboard" onClick={closeMenu}>
                   <FaTachometerAlt /> Admin
@@ -176,6 +205,18 @@ const Header = () => {
         </nav>
       </div>
       {menuOpen && <div className="nav-overlay" onClick={closeMenu} />}
+
+      {showMobileCartCta && cartCount > 0 && location.pathname !== "/cart" && (
+        <Link
+          to="/cart"
+          className="mobile-view-cart"
+          onClick={() => {
+            closeMenu();
+          }}
+        >
+          View Cart ({cartCount})
+        </Link>
+      )}
     </header>
   );
 };

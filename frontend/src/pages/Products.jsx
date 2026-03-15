@@ -9,6 +9,7 @@ const Products = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
   const [keyword, setKeyword] = useState(searchParams.get("keyword") || "");
   const [debouncedKeyword, setDebouncedKeyword] = useState(searchParams.get("keyword") || "");
   const [category, setCategory] = useState(searchParams.get("category") || "");
@@ -50,8 +51,9 @@ const Products = () => {
     const fetchProducts = async () => {
       if (currentPage === 1) setLoading(true);
       else setLoadingMore(true);
+      if (currentPage === 1) setErrorMsg("");
       try {
-        let url = `/api/v1/products?page=${currentPage}`;
+        let url = `/api/v1/products?page=${currentPage}&includeTopReviews=1`;
         if (debouncedKeyword) url += `&keyword=${encodeURIComponent(debouncedKeyword)}`;
         if (category) url += `&category=${encodeURIComponent(category)}`;
         if (gender) url += `&gender=${encodeURIComponent(gender)}`;
@@ -66,7 +68,13 @@ const Products = () => {
         setProductsCount(data.productsCount);
         setResultsPerPage(data.resultsPerPage);
       } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to fetch products");
+        const message =
+          error.response?.data?.message ||
+          (error.code === "ERR_NETWORK"
+            ? "Cannot reach API server. Start the backend on http://localhost:5000 (and seed the DB)."
+            : "Failed to fetch products");
+        toast.error(message);
+        if (currentPage === 1) setErrorMsg(message);
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -145,19 +153,31 @@ const Products = () => {
           <div className="gender-filter">
             <button
               className={gender === "" ? "active" : ""}
-              onClick={() => { setGender(""); setCurrentPage(1); setProducts([]); }}
+              onClick={() => {
+                setGender("");
+                setCurrentPage(1);
+                setProducts([]);
+              }}
             >
               All
             </button>
             <button
               className={gender === "Men" ? "active" : ""}
-              onClick={() => { setGender("Men"); setCurrentPage(1); setProducts([]); }}
+              onClick={() => {
+                setGender("Men");
+                setCurrentPage(1);
+                setProducts([]);
+              }}
             >
               Men
             </button>
             <button
               className={gender === "Women" ? "active" : ""}
-              onClick={() => { setGender("Women"); setCurrentPage(1); setProducts([]); }}
+              onClick={() => {
+                setGender("Women");
+                setCurrentPage(1);
+                setProducts([]);
+              }}
             >
               Women
             </button>
@@ -169,14 +189,18 @@ const Products = () => {
         <div className="loader">Loading...</div>
       ) : (
         <>
-          <p className="products-count">{productsCount} products found</p>
+          {errorMsg ? (
+            <p className="no-products">{errorMsg}</p>
+          ) : (
+            <p className="products-count">{productsCount} products found</p>
+          )}
           <div className="products-grid">
             {products.length > 0 ? (
               products.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))
             ) : (
-              <p className="no-products">No products found</p>
+              !errorMsg && <p className="no-products">No products found</p>
             )}
           </div>
 

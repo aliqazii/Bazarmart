@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -26,24 +26,31 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [revenueByMonth, setRevenueByMonth] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
+  const didFetchRef = useRef(false);
 
   useEffect(() => {
+    if (didFetchRef.current) return;
+    didFetchRef.current = true;
+
     const fetchData = async () => {
       try {
-        const [productsRes, usersRes, ordersRes] = await Promise.all([
-          axios.get("/api/v1/products?page=1"),
+        const [productSummaryRes, usersRes, ordersRes] = await Promise.all([
+          axios.get("/api/v1/products/admin/summary"),
           axios.get("/api/v1/users/admin/users"),
           axios.get("/api/v1/orders/admin/all"),
         ]);
 
-        const orders = ordersRes.data.orders;
+        const orders = Array.isArray(ordersRes.data?.orders) ? ordersRes.data.orders : [];
+        const users = Array.isArray(usersRes.data?.users) ? usersRes.data.users : [];
+        const productsCount = Number(productSummaryRes.data?.productsCount || 0);
+
         const processing = orders.filter((o) => o.orderStatus === "Processing").length;
         const shipped = orders.filter((o) => o.orderStatus === "Shipped").length;
         const delivered = orders.filter((o) => o.orderStatus === "Delivered").length;
 
         setStats({
-          products: productsRes.data.productsCount,
-          users: usersRes.data.users.length,
+          products: productsCount,
+          users: users.length,
           orders: orders.length,
           totalRevenue: ordersRes.data.totalAmount || 0,
           processing,
@@ -68,25 +75,25 @@ const AdminDashboard = () => {
           }))
         );
 
-        // Get all products for category breakdown + low stock
-        let allProds = [...productsRes.data.products];
-        const totalPages = Math.ceil(productsRes.data.productsCount / productsRes.data.resultsPerPage);
-        for (let page = 2; page <= totalPages; page++) {
-          const { data } = await axios.get(`/api/v1/products?page=${page}`);
-          allProds = [...allProds, ...data.products];
-        }
-        setLowStock(allProds.filter((p) => p.stock <= 5));
-
-        // Category breakdown
-        const catMap = {};
-        allProds.forEach((p) => {
-          catMap[p.category] = (catMap[p.category] || 0) + 1;
-        });
+        setLowStock(Array.isArray(productSummaryRes.data?.lowStockProducts) ? productSummaryRes.data.lowStockProducts : []);
         setCategoryData(
-          Object.entries(catMap).map(([name, value]) => ({ name, value }))
+          Array.isArray(productSummaryRes.data?.productsByCategory)
+            ? productSummaryRes.data.productsByCategory
+            : []
         );
-      } catch {
-        toast.error("Failed to load dashboard data");
+      } catch (error) {
+        const status = error?.response?.status;
+        const apiMessage = error?.response?.data?.message;
+
+        let message = apiMessage || "Failed to load dashboard data";
+        if (status === 401) message = "Session expired. Please login again.";
+        else if (status === 403) message = "Admin access required.";
+        else if (status === 429) message = "Too many requests. Please wait a moment and refresh.";
+        else if (error?.code === "ERR_NETWORK") {
+          message = "Cannot reach API server. Start the backend on http://localhost:5000.";
+        }
+
+        toast.error(message, { id: "admin-dashboard-load" });
       } finally {
         setLoading(false);
       }

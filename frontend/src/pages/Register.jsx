@@ -2,13 +2,16 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { register, loading } = useAuth();
+  const { register, googleLogin, loading } = useAuth();
   const navigate = useNavigate();
+
+  const googleEnabled = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,9 +56,28 @@ const Register = () => {
             minLength={6}
           />
         </div>
+
         <button type="submit" disabled={loading}>
           {loading ? "Registering..." : "Register"}
         </button>
+
+        {googleEnabled && (
+          <div className="google-auth-wrap">
+            <GoogleLogin
+              onSuccess={async (cred) => {
+                try {
+                  await googleLogin(cred.credential);
+                  toast.success("Signed up with Google");
+                  navigate("/");
+                } catch (error) {
+                  toast.error(error.response?.data?.message || "Google sign-up failed");
+                }
+              }}
+              onError={() => toast.error("Google sign-up failed")}
+            />
+          </div>
+        )}
+
         <p className="auth-link">
           Already have an account? <Link to="/login">Login</Link>
         </p>

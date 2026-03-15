@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { FaStar, FaRegStar, FaBell, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaStar, FaRegStar, FaStarHalfAlt, FaBell, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
 import useScrollReveal from "../hooks/useScrollReveal";
@@ -101,7 +101,7 @@ const ProductDetail = () => {
   const [similarProducts, setSimilarProducts] = useState([]);
   const [selectedImage, setSelectedImage] = useState(0);
   const [reviews, setReviews] = useState([]);
-  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
   const [stockAlertActive, setStockAlertActive] = useState(false);
@@ -147,7 +147,7 @@ const ProductDetail = () => {
 
         // Fetch similar products
         const { data: similar } = await axios.get(
-          `/api/v1/products?category=${encodeURIComponent(data.product.category)}`
+          `/api/v1/products?category=${encodeURIComponent(data.product.category)}&includeTopReviews=1`
         );
         setSimilarProducts(
           similar.products.filter((p) => p._id !== data.product._id).slice(0, 4)
@@ -184,7 +184,7 @@ const ProductDetail = () => {
       if (others.length === 0) return;
       try {
         const results = await Promise.all(
-          others.map((pid) => axios.get(`/api/v1/products/${pid}`).then((r) => r.data.product).catch(() => null))
+          others.map((pid) => axios.get(`/api/v1/products/${pid}?includeTopReviews=1`).then((r) => r.data.product).catch(() => null))
         );
         setRecentlyViewed(results.filter(Boolean));
       } catch { /* ignore */ }
@@ -252,6 +252,10 @@ const ProductDetail = () => {
 
   const handleSubmitReview = async (e) => {
     e.preventDefault();
+    if (!Number.isFinite(Number(reviewRating)) || Number(reviewRating) < 1) {
+      toast.error("Please select a star rating");
+      return;
+    }
     if (!reviewComment.trim()) {
       toast.error("Please write a comment");
       return;
@@ -259,13 +263,13 @@ const ProductDetail = () => {
     setReviewLoading(true);
     try {
       await axios.post("/api/v1/reviews", {
-        product: id,
-        rating: reviewRating,
-        comment: reviewComment,
+        productId: id,
+        rating: Number(reviewRating),
+        comment: reviewComment.trim(),
       });
       toast.success("Review submitted!");
       setReviewComment("");
-      setReviewRating(5);
+      setReviewRating(0);
       // Refresh reviews & product
       const { data: revData } = await axios.get(`/api/v1/reviews/product/${id}`);
       setReviews(revData.reviews || []);
@@ -290,6 +294,12 @@ const ProductDetail = () => {
 
   if (loading) return <div className="loader">Loading...</div>;
   if (!product) return <div className="not-found">Product not found</div>;
+
+  const ratingValue = Math.max(0, Math.min(5, Number(product?.ratings || 0)));
+  const reviewCount = Number(product?.numOfReviews || 0);
+  const roundedStars = Math.round(ratingValue * 2) / 2;
+  const fullStars = Math.floor(roundedStars);
+  const hasHalfStar = roundedStars - fullStars === 0.5;
 
   const images = activeImages;
 
@@ -341,11 +351,13 @@ const ProductDetail = () => {
 
         <div className="product-detail-rating">
           <div className="stars-display">
-            {[1, 2, 3, 4, 5].map((s) =>
-              s <= Math.round(product.ratings) ? <FaStar key={s} className="star-filled" /> : <FaRegStar key={s} className="star-empty" />
-            )}
+            {[1, 2, 3, 4, 5].map((s) => {
+              if (s <= fullStars) return <FaStar key={s} className="star-filled" />;
+              if (s === fullStars + 1 && hasHalfStar) return <FaStarHalfAlt key={s} className="star-filled" />;
+              return <FaRegStar key={s} className="star-empty" />;
+            })}
           </div>
-          <span>{product.ratings}/5 ({product.numOfReviews} Reviews)</span>
+          <span>{ratingValue.toFixed(1)}/5 ({reviewCount} Reviews)</span>
         </div>
 
         {product.gender && (

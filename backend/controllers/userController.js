@@ -2,6 +2,7 @@ import User from "../models/userModel.js";
 import ActivityLog from "../models/activityLogModel.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import catchAsync from "../middleware/catchAsync.js";
+import { OAuth2Client } from "google-auth-library";
 
 const sendToken = (user, statusCode, res) => {
   const token = user.getJWTToken();
@@ -22,6 +23,8 @@ const sendToken = (user, statusCode, res) => {
     token,
   });
 };
+
+const getGoogleClient = () => new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Register
 export const registerUser = catchAsync(async (req, res, next) => {
@@ -52,6 +55,66 @@ export const loginUser = catchAsync(async (req, res, next) => {
 
   if (!isPasswordMatched) {
     return next(new ErrorHandler("Invalid email or password", 401));
+  }
+
+  sendToken(user, 200, res);
+});
+
+// Google Sign-in / Register
+export const googleAuth = catchAsync(async (req, res, next) => {
+  const { credential } = req.body;
+
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return next(new ErrorHandler("Google Sign-In is not configured", 500));
+  }
+
+  if (!credential) {
+    return next(new ErrorHandler("Missing Google credential", 400));
+  }
+
+  let payload;
+  try {
+    const client = getGoogleClient();
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    return next(new ErrorHandler("Invalid Google token", 401));
+  }
+
+  const email = (payload?.email || "").toLowerCase();
+  const emailVerified = Boolean(payload?.email_verified);
+  const googleId = payload?.sub || "";
+
+  if (!email || !emailVerified) {
+    return next(new ErrorHandler("Google account email is not verified", 401));
+  }
+
+  const displayName = payload?.name || email.split("@")[0];
+  const avatar = payload?.picture || "";
+
+  let user = await User.findOne({ email });
+
+  if (!user) {
+    const referralCode = `ALI${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    user = await User.create({
+      name: displayName,
+      email,
+      authProvider: "google",
+      googleId,
+      avatar,
+      referralCode,
+    });
+  } else {
+    const updates = {};
+    if (!user.googleId && googleId) updates.googleId = googleId;
+    if (!user.avatar && avatar) updates.avatar = avatar;
+    if (user.authProvider === "google" && user.name !== displayName && displayName) updates.name = displayName;
+    if (Object.keys(updates).length > 0) {
+      user = await User.findByIdAndUpdate(user._id, updates, { new: true });
+    }
   }
 
   sendToken(user, 200, res);

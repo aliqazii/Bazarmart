@@ -1,32 +1,29 @@
 import Review from "../models/reviewModel.js";
 import Product from "../models/productModel.js";
-import Order from "../models/orderModel.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import catchAsync from "../middleware/catchAsync.js";
 
 // Create or Update Review
 export const createReview = catchAsync(async (req, res, next) => {
-  const { rating, comment, productId } = req.body;
+  const rating = req.body.rating;
+  const comment = req.body.comment;
+  const productId = req.body.productId || req.body.product;
 
-  if (!rating || !comment || !productId) {
+  if (productId == null || String(productId).trim() === "") {
     return next(new ErrorHandler("Please provide rating, comment, and productId", 400));
   }
 
-  // Check if user has purchased this product
-  const orders = await Order.find({
-    user: req.user._id,
-    "orderItems.product": productId,
-    orderStatus: "Delivered",
-  });
+  const normalizedComment = String(comment || "").trim();
+  const normalizedRating = Number(rating);
 
-  if (orders.length === 0) {
-    return next(new ErrorHandler("You can only review products you have purchased and received", 400));
+  if (!Number.isFinite(normalizedRating) || normalizedRating < 1 || normalizedRating > 5 || !normalizedComment) {
+    return next(new ErrorHandler("Please provide rating, comment, and productId", 400));
   }
 
   // Upsert review
   const review = await Review.findOneAndUpdate(
     { user: req.user._id, product: productId },
-    { rating: Number(rating), comment },
+    { rating: normalizedRating, comment: normalizedComment },
     { upsert: true, new: true, runValidators: true }
   );
 

@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
-import { FaStar, FaShoppingCart, FaHeart, FaRegHeart } from "react-icons/fa";
+import { FaStar, FaRegStar, FaStarHalfAlt, FaShoppingCart, FaHeart, FaRegHeart } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
+import { motion, useReducedMotion } from "framer-motion";
+
+const MotionLink = motion(Link);
 
 const getStableDiscount = (product) => {
   if (Number(product?.price || 0) <= 50) return 0;
@@ -15,9 +18,20 @@ const getStableDiscount = (product) => {
 
 const ProductCard = ({ product }) => {
   const { user, wishlist, toggleWishlistItem } = useAuth();
+  const shouldReduceMotion = useReducedMotion();
   const isWished = wishlist.includes(product._id);
   const discount = getStableDiscount(product);
   const originalPrice = discount ? (product.price / (1 - discount / 100)).toFixed(2) : null;
+
+  const ratingValue = Math.max(0, Math.min(5, Number(product?.ratings || 0)));
+  const reviewCount = Number(product?.numOfReviews || 0);
+  const roundedStars = Math.round(ratingValue * 2) / 2;
+  const fullStars = Math.floor(roundedStars);
+  const hasHalfStar = roundedStars - fullStars === 0.5;
+
+  const topReviews = Array.isArray(product?.topReviews) ? product.topReviews : [];
+
+  const imageUrl = product.images?.[0]?.url || "https://placehold.co/400x400/2d3436/dfe6e9/webp?text=No+Image";
 
   const addToCart = (e) => {
     e.preventDefault();
@@ -45,11 +59,26 @@ const ProductCard = ({ product }) => {
     if (result) toast.success(result.message);
   };
 
+  const cardMotionProps = shouldReduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, y: 14, rotateX: 12, rotateY: -10, z: -42, scale: 0.988 },
+        animate: { opacity: 1, y: 0, rotateX: 0, rotateY: 0, z: 0, scale: 1 },
+        transition: { duration: 0.24, ease: "easeOut" },
+        whileHover: { y: -3, rotateX: 4, rotateY: -4, z: 18 },
+        whileTap: { scale: 0.99, rotateX: 0, rotateY: 0, z: 0 },
+      };
+
   return (
-    <Link to={`/product/${product._id}`} className="product-card">
+    <MotionLink
+      to={`/product/${product._id}`}
+      className="product-card"
+      style={{ transformPerspective: 1000, transformStyle: "preserve-3d" }}
+      {...cardMotionProps}
+    >
       <div className="product-card-image-wrap">
         <img
-          src={product.images?.[0]?.url || "https://placehold.co/400x400/2d3436/dfe6e9/webp?text=No+Image"}
+          src={imageUrl}
           alt={product.name}
           loading="lazy"
         />
@@ -77,16 +106,44 @@ const ProductCard = ({ product }) => {
         <span className="product-card-category">{product.category}</span>
         <h3>{product.name}</h3>
         <div className="product-card-rating">
-          <FaStar className="star-icon" />
-          <span className="rating-value">{product.ratings.toFixed(1)}</span>
-          <span className="rating-count">({product.numOfReviews})</span>
+          <div className="stars-display stars-mini" aria-label={`Rating ${ratingValue.toFixed(1)} out of 5`}>
+            {[1, 2, 3, 4, 5].map((s) => {
+              if (s <= fullStars) return <FaStar key={s} className="star-filled" />;
+              if (s === fullStars + 1 && hasHalfStar) return <FaStarHalfAlt key={s} className="star-filled" />;
+              return <FaRegStar key={s} className="star-empty" />;
+            })}
+          </div>
+          <span className="rating-value">{ratingValue.toFixed(1)}</span>
+          <span className="rating-count">({reviewCount})</span>
         </div>
+
+        {topReviews.length > 0 && (
+          <div className="product-card-reviews-preview">
+            {topReviews.slice(0, 2).map((r) => (
+              <div key={r._id || `${product._id}_${r.createdAt}_${r.rating}`} className="product-card-review-item">
+                <div className="product-card-review-meta">
+                  <span className="product-card-review-user">{r.user?.name || "User"}</span>
+                  <span className="product-card-review-stars" aria-label={`Review rating ${Number(r.rating || 0)} out of 5`}>
+                    {[1, 2, 3, 4, 5].map((s) =>
+                      s <= Number(r.rating || 0)
+                        ? <FaStar key={s} className="star-filled" />
+                        : <FaRegStar key={s} className="star-empty" />
+                    )}
+                  </span>
+                </div>
+                <div className="product-card-review-comment">
+                  {String(r.comment || "").trim()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="product-card-pricing">
-          <span className="product-card-price">${product.price.toFixed(2)}</span>
+          <span className="product-card-price">${Number(product.price || 0).toFixed(2)}</span>
           {originalPrice && <span className="product-card-original">${originalPrice}</span>}
         </div>
       </div>
-    </Link>
+    </MotionLink>
   );
 };
 

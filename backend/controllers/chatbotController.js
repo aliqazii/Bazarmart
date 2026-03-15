@@ -7,37 +7,47 @@ const FAQ = {
   shipping: {
     keywords: ["shipping", "delivery", "deliver", "ship", "how long", "shipping cost", "free shipping"],
     response:
-      "📦 **Shipping Info:**\n• Free shipping on orders over $50\n• Standard delivery: 5-7 business days\n• Express delivery: 2-3 business days ($9.99)\n• We ship to all US states\n• Tracking provided for all orders",
+      "**Shipping**\n• Free shipping on orders over $50\n• Standard delivery: 5-7 business days\n• Express delivery: 2-3 business days ($9.99)\n• Tracking is provided for all orders\n\nFor full details, see: [Shipping Policy](/shipping-policy).",
   },
   returns: {
     keywords: ["return", "refund", "exchange", "money back", "send back", "return policy"],
     response:
-      "🔄 **Return & Refund Policy:**\n• 30-day return window from delivery\n• Items must be unused and in original packaging\n• Free returns on defective items\n• Refunds processed within 5-7 business days\n• Exchanges available for different sizes/colors",
+      "**Returns & Refunds**\n• 30-day return window from delivery\n• Items must be unused and in original packaging\n• Refunds are processed within 5-7 business days after inspection\n• Exchanges are available for different sizes/colors\n\nSee: [Return Policy](/return-policy).",
   },
   payment: {
     keywords: ["payment", "pay", "credit card", "debit card", "payment method", "checkout"],
     response:
-      "💳 **Payment Methods:**\n• Credit/Debit cards (Visa, MasterCard, Amex)\n• Secure checkout powered by Stripe\n• All transactions are encrypted\n• Pay safely with our secure payment gateway",
+      "**Payments**\n• Credit/Debit cards (Visa, MasterCard, Amex)\n• Secure checkout powered by Stripe\n• Transactions are encrypted and processed securely",
   },
   account: {
     keywords: ["account", "register", "sign up", "login", "password", "forgot password"],
     response:
-      "👤 **Account Help:**\n• Create an account at /register\n• Login at /login\n• View your profile and order history\n• Contact support if you need to reset your password",
+      "**Account Help**\n• Create an account: [Register](/register)\n• Sign in: [Login](/login)\n• View profile and order history in your account\n\nIf you cannot access your account, contact support from [Contact](/contact).",
   },
   contact: {
     keywords: ["contact", "support", "help", "customer service", "phone", "email"],
     response:
-      "📞 **Contact Us:**\n• Email: support@bazarmart.com\n• Phone: 1-800-BAZARMART\n• Live Chat: Available 24/7 right here!\n• Visit our Contact page for more options",
+      "**Contact & Support**\n• Email: support@bazarmart.com\n• Live chat: available here\n\nYou can also use: [Contact](/contact).",
   },
   hours: {
     keywords: ["hours", "open", "available", "when"],
     response:
-      "⏰ **Availability:**\n• Our chatbot is available 24/7!\n• Customer support team: Mon-Fri 9AM-6PM EST\n• Email support responds within 24 hours",
+      "**Availability**\n• Chat assistant: 24/7\n• Support team: Mon-Fri 9AM-6PM\n• Email replies: within 24 hours",
   },
   terms: {
     keywords: ["terms", "conditions", "terms and conditions", "terms of service", "tos", "policy", "policies", "privacy", "privacy policy", "warranty", "guarantee"],
     response:
-      "📋 **Our Policies:**\n• [Terms of Service](/terms-of-service) — Usage terms for our platform\n• [Privacy Policy](/privacy-policy) — How we handle your data\n• [Return Policy](/return-policy) — 30-day hassle-free returns\n• [Shipping Policy](/shipping-policy) — Delivery timelines & costs\n\nClick any link above to read the full details.",
+      "**Policies**\n• [Terms of Service](/terms-of-service)\n• [Privacy Policy](/privacy-policy)\n• [Return Policy](/return-policy)\n• [Shipping Policy](/shipping-policy)",
+  },
+  cart: {
+    keywords: ["cart", "add to cart", "remove from cart", "view cart", "checkout", "place order"],
+    response:
+      "**Cart & Checkout**\n• Add items: click the cart button on a product\n• View cart: open the Cart page\n• Checkout: proceed from Cart to confirm your order\n\nIf you run into an error during checkout, tell me what you see and I will guide you.",
+  },
+  tracking: {
+    keywords: ["tracking", "track order", "order status", "where is my order", "shipment"],
+    response:
+      "**Order Tracking**\n• Open: [Tracking](/tracking)\n• Or view order history after login in your profile\n\nIf you are logged in, ask: “Where is my order?” and I can show recent orders.",
   },
 };
 
@@ -56,7 +66,7 @@ function detectIntent(message) {
   }
 
   // Order tracking
-  if (/order|track|where is my|package|status|when will/.test(lower)) {
+  if (/\b(order|track|tracking|where is my|package|shipment|status)\b/.test(lower)) {
     return { type: "order_tracking" };
   }
 
@@ -81,12 +91,13 @@ function detectIntent(message) {
     /(?:above|over|more than|at least|min|from)\s*\$?(\d+)/
   );
 
-  // Product recommendation keywords
+  // Product recommendation / shopping intent
   if (
-    /recommend|suggest|show me|looking for|find|search|want|need|buy|shop|best/.test(lower) ||
+    /\b(recommend|suggest|show me|looking for|find|search|want|need|buy|shop|best|popular|top rated|trending|deal|deals|sale|discount)\b/.test(lower) ||
     categoryMatch ||
     genderMatch ||
-    priceMatch
+    priceMatch ||
+    priceAboveMatch
   ) {
     const filters = {};
     if (categoryMatch) filters.category = categoryMatch[1];
@@ -118,17 +129,11 @@ function detectIntent(message) {
     }
   }
 
-  // Fallback: treat any remaining text as a product search
-  const cleaned = lower
-    .replace(/\b(what|where|how|do|does|is|are|have|has|get|can|could|would|should|any|there|about|tell|give|show|list|which|who)\b/g, "")
-    .replace(/[^\w\s]/g, "")
-    .trim();
-  if (cleaned.length > 1) {
-    return { type: "product_search", filters: {}, keyword: cleaned };
-  }
-
   return { type: "unknown" };
 }
+
+const OUT_OF_SCOPE_REPLY =
+  "I can help with Bazarmart questions only (products, orders, shipping, returns, payments, account, and how to use the website).\n\nI cannot help with that question. If you rephrase it as a store/website question, I will try to assist.";
 
 // Normalize category name to title case
 function normalizeCategory(cat) {
@@ -189,26 +194,26 @@ export const chatbotMessage = catchAsync(async (req, res) => {
     case "greeting": {
       const name = req.user ? req.user.name.split(" ")[0] : "";
       reply = name
-        ? `Hey ${name}! 👋 Welcome back to Bazarmart! How can I help you today?`
-        : "Hey there! 👋 Welcome to Bazarmart! I'm your shopping assistant. How can I help you today?";
+        ? `Hello ${name}. Welcome back to Bazarmart. How can I help you today?`
+        : "Hello. Welcome to Bazarmart. How can I help you today?";
       quickActions = [
-        { label: "🛍️ Browse Products", action: "Show me popular products" },
-        { label: "📦 Track Order", action: "Where is my order?" },
-        { label: "🚚 Shipping Info", action: "Tell me about shipping" },
-        { label: "🔄 Return Policy", action: "What's your return policy?" },
+        { label: "Browse products", action: "Show me popular products" },
+        { label: "Track an order", action: "Where is my order?" },
+        { label: "Shipping", action: "Tell me about shipping" },
+        { label: "Returns", action: "What's your return policy?" },
       ];
       break;
     }
 
     case "farewell": {
-      reply = "Thanks for chatting! 😊 Have a wonderful day. Come back anytime you need help!";
+      reply = "Thank you for chatting with Bazarmart. If you need anything else, I am here to help.";
       break;
     }
 
     case "order_tracking": {
       if (!req.user) {
         reply =
-          "🔒 To check your order status, you'll need to log in first.\n\nPlease [login](/login) and then I can show you your orders!";
+          "To check your order status, please log in first.\n\nGo to: [Login](/login).";
         quickActions = [{ label: "🔑 Login", action: "GO:/login" }];
       } else {
         const orders = await Order.find({ user: req.user._id })
@@ -217,8 +222,8 @@ export const chatbotMessage = catchAsync(async (req, res) => {
           .lean();
 
         if (orders.length === 0) {
-          reply = "You don't have any orders yet! Start shopping and I'll help you track your orders. 🛒";
-          quickActions = [{ label: "🛍️ Shop Now", action: "GO:/products" }];
+          reply = "You do not have any orders yet. You can browse products and place an order anytime.";
+          quickActions = [{ label: "Shop now", action: "GO:/products" }];
         } else {
           const orderList = orders
             .map((o, i) => {
@@ -276,7 +281,7 @@ export const chatbotMessage = catchAsync(async (req, res) => {
           const retryFound = await Product.find(retryQuery).limit(6).lean();
           if (retryFound.length > 0) {
             products = formatProducts(retryFound);
-            reply = `Here are some "${word}" products you might like:`;
+            reply = `Here are some products matching "${word}":`;
             break;
           }
         }
@@ -289,26 +294,26 @@ export const chatbotMessage = catchAsync(async (req, res) => {
             products = formatProducts(broader);
             reply = `I couldn't find an exact match, but here are some ${
               filters.category || ""
-            } products you might like:`;
+            } products you can browse:`;
           } else {
             reply =
-              "😕 I couldn't find products matching your criteria. Try broadening your search or browse our categories!";
+              "I could not find products matching your criteria. Try a broader search or browse a category.";
             quickActions = [
-              { label: "📱 Electronics", action: "Show me electronics" },
-              { label: "👗 Clothing", action: "Show me clothing" },
-              { label: "👟 Shoes", action: "Show me shoes" },
-              { label: "🏠 Home", action: "Show me home products" },
+              { label: "Electronics", action: "Show me electronics" },
+              { label: "Clothing", action: "Show me clothing" },
+              { label: "Shoes", action: "Show me shoes" },
+              { label: "Home", action: "Show me home products" },
             ];
           }
         }
       } else if (found.length === 0) {
         reply =
-          "😕 I couldn't find products matching your criteria. Try broadening your search or browse our categories!";
+          "I could not find products matching your criteria. Try a broader search or browse a category.";
         quickActions = [
-          { label: "📱 Electronics", action: "Show me electronics" },
-          { label: "👗 Clothing", action: "Show me clothing" },
-          { label: "👟 Shoes", action: "Show me shoes" },
-          { label: "🏠 Home", action: "Show me home products" },
+          { label: "Electronics", action: "Show me electronics" },
+          { label: "Clothing", action: "Show me clothing" },
+          { label: "Shoes", action: "Show me shoes" },
+          { label: "Home", action: "Show me home products" },
         ];
       } else {
         products = formatProducts(found);
@@ -316,17 +321,17 @@ export const chatbotMessage = catchAsync(async (req, res) => {
         if (filters.gender) desc.push(filters.gender.toLowerCase());
         if (filters.category) desc.push(filters.category);
         if (filters.maxPrice) desc.push(`under $${filters.maxPrice}`);
-        reply = `Here are ${found.length} ${desc.join(" ") || ""} products I found for you: 🎯`;
+        reply = `Here are ${found.length} ${desc.join(" ") || ""} products I found:`;
       }
       break;
     }
 
     case "discount": {
       reply =
-        "🎉 **Current Offers:**\n• Free shipping on orders over $50!\n• New season collections just arrived\n• Check out our trending products for the best deals\n\nBrowse now to find amazing prices!";
+        "**Offers**\n• Free shipping on orders over $50\n• Browse products to see current prices and deals";
       quickActions = [
-        { label: "🔥 Trending", action: "Show me trending products" },
-        { label: "🛍️ All Products", action: "GO:/products" },
+        { label: "Trending", action: "Show me trending products" },
+        { label: "All products", action: "GO:/products" },
       ];
       break;
     }
@@ -337,15 +342,14 @@ export const chatbotMessage = catchAsync(async (req, res) => {
     }
 
     default: {
-      reply =
-        "I'm not sure I understand. Here are some things I can help with:";
+      reply = OUT_OF_SCOPE_REPLY;
       quickActions = [
-        { label: "🛍️ Find Products", action: "Show me popular products" },
-        { label: "📦 Track Order", action: "Where is my order?" },
-        { label: "🚚 Shipping Info", action: "Tell me about shipping" },
-        { label: "🔄 Returns", action: "What's your return policy?" },
-        { label: "💳 Payment", action: "What payment methods do you accept?" },
-        { label: "📞 Contact", action: "How do I contact support?" },
+        { label: "Find products", action: "Show me popular products" },
+        { label: "Track order", action: "Where is my order?" },
+        { label: "Shipping", action: "Tell me about shipping" },
+        { label: "Returns", action: "What's your return policy?" },
+        { label: "Payments", action: "What payment methods do you accept?" },
+        { label: "Contact", action: "How do I contact support?" },
       ];
       break;
     }

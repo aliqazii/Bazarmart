@@ -34,6 +34,47 @@ const categories = [
   { name: "Sports", icon: FaFootballBall, color: "#14b8a6", bg: "#f0fdfa" },
 ];
 
+const pickTopRated = (products = []) => {
+  if (!Array.isArray(products) || products.length === 0) return null;
+  return [...products]
+    .sort((a, b) => (Number(b?.ratings || 0) - Number(a?.ratings || 0)) || (Number(b?.numOfReviews || 0) - Number(a?.numOfReviews || 0)))
+    .find(Boolean) || null;
+};
+
+const fillUniqueByCategory = (pools = [], desiredCount = 8) => {
+  const picked = [];
+  const usedIds = new Set();
+  const usedCategories = new Set();
+
+  // Pass 1: unique categories
+  for (const pool of pools) {
+    for (const p of pool || []) {
+      if (!p?._id) continue;
+      if (usedIds.has(p._id)) continue;
+      const cat = String(p.category || "").trim();
+      if (!cat || usedCategories.has(cat)) continue;
+      picked.push(p);
+      usedIds.add(p._id);
+      usedCategories.add(cat);
+      if (picked.length >= desiredCount) return picked;
+      break;
+    }
+  }
+
+  // Pass 2: fill remaining (any category)
+  for (const pool of pools) {
+    for (const p of pool || []) {
+      if (!p?._id) continue;
+      if (usedIds.has(p._id)) continue;
+      picked.push(p);
+      usedIds.add(p._id);
+      if (picked.length >= desiredCount) return picked;
+    }
+  }
+
+  return picked;
+};
+
 const Home = () => {
   useDocumentMeta({
     title: "Bazarmart - Premium Online Store",
@@ -45,6 +86,7 @@ const Home = () => {
   const [deals, setDeals] = useState([]);
   const [heroProducts, setHeroProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
   const [categoryCounts, setCategoryCounts] = useState({});
   const featuredRef = useRef(null);
   const trendingRef = useRef(null);
@@ -53,46 +95,65 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch featured (page 1), trending (page 2), deals (page 3)
-        const [featRes, trendRes, dealRes] = await Promise.all([
-          axios.get("/api/v1/products?page=1"),
-          axios.get("/api/v1/products?page=2"),
-          axios.get("/api/v1/products?page=3"),
-        ]);
-        setFeatured(featRes.data.products);
-        setTrending(trendRes.data.products);
-        setDeals(dealRes.data.products);
-
-        // Fetch hero showcase products from diverse categories
-        const heroSearches = [
-          "MacBook Pro",
-          "Air Jordan",
-          "iPhone 13 Pro",
-          "Prada Women Bag",
-        ];
-        const heroResults = await Promise.all(
-          heroSearches.map((kw) =>
-            axios.get(`/api/v1/products?keyword=${encodeURIComponent(kw)}`).catch(() => null)
+        setErrorMsg("");
+        // Sample products across categories so Home doesn't end up showing only one category.
+        const categoryResponses = await Promise.all(
+          categories.map((cat) =>
+            axios
+              .get(`/api/v1/products?category=${encodeURIComponent(cat.name)}&page=1&includeTopReviews=1`)
+              .catch(() => null)
           )
         );
-        const heroPicks = heroResults
-          .map((r) => r?.data?.products?.[0])
-          .filter(Boolean);
-        setHeroProducts(heroPicks.length >= 4 ? heroPicks : featRes.data.products.slice(0, 4));
 
-        // Fetch category counts
+        const categoryPools = categoryResponses
+          .map((r) => r?.data?.products || [])
+          .filter(Boolean);
+
         const counts = {};
-        await Promise.all(
-          categories.map(async (cat) => {
-            try {
-              const { data } = await axios.get(`/api/v1/products?category=${cat.name}&page=1`);
-              counts[cat.name] = data.productsCount;
-            } catch { counts[cat.name] = 0; }
-          })
-        );
+        categories.forEach((cat, idx) => {
+          counts[cat.name] = categoryResponses[idx]?.data?.productsCount || 0;
+        });
         setCategoryCounts(counts);
+
+        // Featured: up to 2 items per category, then fill.
+        const featuredPool = categoryPools.map((pool) => (pool || []).slice(0, 2));
+        let featuredPicks = fillUniqueByCategory(featuredPool, 8);
+
+        // Trending: top-rated per category (if available), then fill.
+        const trendingSeed = categoryPools
+          .map((pool) => {
+            const top = pickTopRated(pool);
+            return top ? [top] : [];
+          });
+        let trendingPicks = fillUniqueByCategory(trendingSeed, 4);
+
+        // New arrivals: newest per category, then fill.
+        const arrivalsSeed = categoryPools.map((pool) => (pool?.[0] ? [pool[0]] : []));
+        let arrivalPicks = fillUniqueByCategory(arrivalsSeed, 4);
+
+        // If most categories are empty, fall back to generic products.
+        if (featuredPicks.length < 8 || trendingPicks.length < 4 || arrivalPicks.length < 4) {
+          const { data: fallback } = await axios.get("/api/v1/products?page=1&includeTopReviews=1");
+          const fallbackPool = Array.isArray(fallback?.products) ? fallback.products : [];
+          featuredPicks = [...featuredPicks, ...fillUniqueByCategory([fallbackPool], 8 - featuredPicks.length)];
+          trendingPicks = [...trendingPicks, ...fillUniqueByCategory([fallbackPool], 4 - trendingPicks.length)];
+          arrivalPicks = [...arrivalPicks, ...fillUniqueByCategory([fallbackPool], 4 - arrivalPicks.length)];
+        }
+
+        setFeatured(featuredPicks);
+        setTrending(trendingPicks);
+        setDeals(arrivalPicks);
+
+        // Hero: showcase from the mixed featured pool.
+        setHeroProducts(featuredPicks.slice(0, 4));
       } catch (error) {
-        toast.error(error.response?.data?.message || "Failed to fetch products");
+        const message =
+          error.response?.data?.message ||
+          (error.code === "ERR_NETWORK"
+            ? "Cannot reach API server. Start the backend on http://localhost:5000 (and seed the DB)."
+            : "Failed to fetch products");
+        toast.error(message);
+        setErrorMsg(message);
       } finally {
         setLoading(false);
       }
@@ -130,6 +191,7 @@ const Home = () => {
 
   return (
     <div className="home">
+      {errorMsg && <p className="no-products">{errorMsg}</p>}
       {/* ===== HERO SECTION ===== */}
       <section className="hero">
         <div className="hero-bg" />

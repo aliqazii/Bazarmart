@@ -5,17 +5,51 @@
 }
 
 :root {
-  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #213547;
-  background-color: #f8f9fa;
+
+  /* Brand palette (already used across the app) */
+  --brand-navy: #1a1a2e;
+  --brand-navy-2: #16213e;
+  --brand-accent: #e94560;
+
+  /* Base page */
+  --page-bg: #f8f9fa;
+  --page-fg: #213547;
+
+  /* Glass surfaces */
+  --glass-blur: 14px;
+  --glass-sat: 140%;
+  --glass-light-bg: rgba(255, 255, 255, 0.42);
+  --glass-light-border: rgba(255, 255, 255, 0.28);
+  --glass-dark-bg: rgba(26, 26, 46, 0.62);
+  --glass-dark-border: rgba(255, 255, 255, 0.12);
+
+  color: var(--page-fg);
+  background-color: var(--page-bg);
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
+
+  /* Subtle brand background so glass blur is visible */
+  background:
+    radial-gradient(900px circle at 12% 10%, rgba(233, 69, 96, 0.14), transparent 60%),
+    radial-gradient(900px circle at 88% 18%, rgba(22, 33, 62, 0.18), transparent 58%),
+    linear-gradient(180deg, var(--page-bg) 0%, #f0f2f5 100%);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 a {

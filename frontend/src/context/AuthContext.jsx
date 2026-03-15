@@ -74,6 +74,14 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  const googleLogin = async (credential) => {
+    const { data } = await axios.post("/api/v1/users/google", {
+      credential,
+    });
+    setUser(data.user);
+    return data;
+  };
+
   const logout = async () => {
     await axios.get("/api/v1/users/logout");
     setUser(null);
@@ -86,6 +94,7 @@ export const AuthProvider = ({ children }) => {
         loading,
         login,
         register,
+        googleLogin,
         logout,
         wishlist,
         toggleWishlistItem,

@@ -15,9 +15,25 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
     },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    avatar: {
+      type: String,
+      default: "",
+    },
     password: {
       type: String,
-      required: [true, "Please enter your password"],
+      required: function requiredPassword() {
+        return this.authProvider === "local";
+      },
       minLength: [6, "Password must be at least 6 characters"],
       select: false,
     },
@@ -59,7 +75,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password") || !this.password) return next();
   this.password = await bcrypt.hash(this.password, 10);
 });
 
@@ -70,6 +86,7 @@ userSchema.methods.getJWTToken = function () {
 };
 
 userSchema.methods.comparePassword = async function (password) {
+  if (!this.password) return false;
   return await bcrypt.compare(password, this.password);
 };
 

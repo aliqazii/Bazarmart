@@ -20,8 +20,8 @@ const AdminProducts = () => {
     setLoading(true);
     try {
       let url = `/api/v1/products?page=${page}`;
-      if (appliedSearch) url += `&keyword=${appliedSearch}`;
-      if (categoryFilter) url += `&category=${categoryFilter}`;
+      if (appliedSearch) url += `&keyword=${encodeURIComponent(appliedSearch)}`;
+      if (categoryFilter) url += `&category=${encodeURIComponent(categoryFilter)}`;
       const { data } = await axios.get(url);
       setProducts(data.products);
       setTotal(data.productsCount);
@@ -36,6 +36,15 @@ const AdminProducts = () => {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  // Live search (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPage(1);
+      setAppliedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleSearch = (e) => {
     e.preventDefault();

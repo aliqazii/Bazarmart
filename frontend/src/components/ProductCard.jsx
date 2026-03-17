@@ -59,21 +59,21 @@ const ProductCard = ({ product }) => {
     if (result) toast.success(result.message);
   };
 
+  // Use only scale and y for animation to prevent flicker
   const cardMotionProps = shouldReduceMotion
     ? {}
     : {
-        initial: { opacity: 0, y: 14, rotateX: 12, rotateY: -10, z: -42, scale: 0.988 },
-        animate: { opacity: 1, y: 0, rotateX: 0, rotateY: 0, z: 0, scale: 1 },
+        initial: { opacity: 0, y: 14, scale: 1 },
+        animate: { opacity: 1, y: 0, scale: 1 },
         transition: { duration: 0.24, ease: "easeOut" },
-        whileHover: { y: -3, rotateX: 4, rotateY: -4, z: 18 },
-        whileTap: { scale: 0.99, rotateX: 0, rotateY: 0, z: 0 },
+        whileHover: { y: -3, scale: 1.02 },
+        whileTap: { scale: 0.99 },
       };
 
   return (
     <MotionLink
       to={`/product/${product._id}`}
       className="product-card"
-      style={{ transformPerspective: 1000, transformStyle: "preserve-3d" }}
       {...cardMotionProps}
     >
       <div className="product-card-image-wrap">
@@ -81,6 +81,9 @@ const ProductCard = ({ product }) => {
           src={imageUrl}
           alt={product.name}
           loading="lazy"
+          width="400"
+          height="220"
+          style={{ display: 'block', width: '100%', height: '220px', objectFit: 'cover', background: '#fafafa' }}
         />
         {discount > 0 && <span className="product-card-badge">-{discount}%</span>}
         {product.stock < 1 && <span className="product-card-badge out-badge">Sold Out</span>}

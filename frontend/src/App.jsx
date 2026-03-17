@@ -62,6 +62,7 @@ function AnimatedRoutes() {
   const rotateYIn = shouldReduceMotion ? 0 : isAdmin ? -3 : -10;
   const zIn = shouldReduceMotion ? 0 : isAdmin ? -10 : -42;
 
+  // Suspense fallback is a lightweight loader for quick perceived loading
   return (
     <Suspense fallback={<RouteLoader />}>
       <AnimatePresence mode="wait" initial={false}>

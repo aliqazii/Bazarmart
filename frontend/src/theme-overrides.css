@@ -157,6 +157,11 @@ input:focus, textarea:focus, select:focus {
   outline: none !important;
 }
 
+option {
+  background: #151821 !important;
+  color: #FAFAFA !important;
+}
+
 /* ===== SPACING & LAYOUT ===== */
 .products-grid,
 .category-grid {

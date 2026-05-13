@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import {
   FaFacebookF,
@@ -16,10 +17,23 @@ import {
   FaUndoAlt,
   FaHeadset,
 } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 const Footer = () => {
   return (
-    <footer className="footer">
+    <motion.footer
+      className="footer"
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      style={{
+        background: "rgba(26, 26, 46, 0.82)",
+        boxShadow: "0 -2px 20px rgba(0,0,0,0.18)",
+        backdropFilter: "blur(18px) saturate(160%)",
+        WebkitBackdropFilter: "blur(18px) saturate(160%)",
+        borderTop: "1px solid rgba(255,255,255,0.08)"
+      }}
+    >
       {/* Trust Badges Bar */}
       <div className="trust-bar">
         <div className="trust-item">
@@ -157,7 +171,7 @@ const Footer = () => {
           </div>
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 };
 

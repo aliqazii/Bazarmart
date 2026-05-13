@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
 * {
   margin: 0;
   padding: 0;
@@ -5,50 +7,149 @@
 }
 
 :root {
-  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+  /* ===== Typography ===== */
+  font-family: 'Outfit', system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  /* Brand palette (already used across the app) */
-  --brand-navy: #1a1a2e;
-  --brand-navy-2: #16213e;
-  --brand-accent: #e94560;
+  /* ===== Brand Palette ===== */
+  --brand-navy: #0A0A0B;      /* Matte Black */
+  --brand-navy-2: #161618;    /* Charcoal */
+  --brand-accent: #059669;    /* Elegant Emerald */
+  --brand-accent-hover: #047857; /* Deep Emerald */
+  --brand-accent-dark: #064E3B;
+  --brand-accent-light: #34D399;
+  --brand-accent-glow: rgba(5, 150, 105, 0.15);
+  --brand-purple: #059669;    
+  --brand-purple-glow: rgba(5, 150, 105, 0.1);
+  --brand-blue: #10B981;
+  --brand-green: #10B981;
+  --brand-gold: #fbbf24;
 
-  /* Base page */
-  --page-bg: #f8f9fa;
-  --page-fg: #213547;
+  /* ===== Page Background ===== */
+  --page-bg: #0A0A0B;
+  --page-fg: #FAFAFA;
+  --page-bg-gradient: radial-gradient(circle at 50% -10%, #1a1e27 0%, #0A0A0B 60%); /* Studio Top-Light Effect */
 
-  /* Glass surfaces */
-  --glass-blur: 14px;
-  --glass-sat: 140%;
-  --glass-light-bg: rgba(255, 255, 255, 0.42);
-  --glass-light-border: rgba(255, 255, 255, 0.28);
-  --glass-dark-bg: rgba(26, 26, 46, 0.62);
-  --glass-dark-border: rgba(255, 255, 255, 0.12);
+  /* ===== Glass Surfaces ===== */
+  --glass-blur: 16px;
+  --glass-sat: 120%;
 
-  color: var(--page-fg);
+  /* Light glass (cards on dark bg) */
+  --glass-light-bg: rgba(255, 255, 255, 0.02);
+  --glass-light-border: rgba(255, 255, 255, 0.08);
+  --glass-light-hover-bg: rgba(255, 255, 255, 0.05);
+  --glass-light-hover-border: rgba(255, 255, 255, 0.15);
+
+  /* Medium glass (elevated elements) */
+  --glass-mid-bg: rgba(255, 255, 255, 0.04);
+  --glass-mid-border: rgba(255, 255, 255, 0.1);
+
+  /* Dark glass (header, sidebar) */
+  --glass-dark-bg: rgba(10, 10, 11, 0.7);
+  --glass-dark-border: rgba(255, 255, 255, 0.05);
+
+  /* Frosted white glass (for contrast panels) */
+  --glass-white-bg: rgba(255, 255, 255, 0.05);
+  --glass-white-border: rgba(255, 255, 255, 0.1);
+
+  /* ===== Text Colors ===== */
+  --text-primary: #FAFAFA;       /* Soft White */
+  --text-secondary: #A1A1AA;     /* Light Gray Neutral */
+  --text-muted: #71717A;
+  --text-heading: #FFFFFF;
+
+  /* ===== Glow Effects (Subdued) ===== */
+  --glow-pink: 0 0 10px 2px rgba(236, 72, 153, 0.1), 0 0 30px 5px rgba(236, 72, 153, 0.05);
+  --glow-blue: 0 4px 14px 0 rgba(16, 185, 129, 0.2);
+  --glow-green: 0 4px 14px 0 rgba(5, 150, 105, 0.2);
+  --glow-gold: 0 0 10px 2px rgba(245, 158, 11, 0.1), 0 0 30px 5px rgba(245, 158, 11, 0.05);
+  --glass-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 10px 24px -4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --glass-shadow-hover: 0 8px 15px -3px rgba(0, 0, 0, 0.3), 0 20px 40px -8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  /* ===== Gradients (Minimal) ===== */
+  --gradient-hero: linear-gradient(135deg, #059669 0%, #047857 100%);
+  --gradient-admin: #0A0A0B;
+  --gradient-accent: linear-gradient(135deg, #059669 0%, #10B981 100%);
+  --gradient-card: rgba(22, 22, 24, 0.5);
+
+  /* ===== Border Radius ===== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+
+  /* ===== Transitions ===== */
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-spring: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  color: var(--text-primary);
   background-color: var(--page-bg);
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
+  background: var(--page-bg-gradient);
+  background-attachment: scroll;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-  /* Subtle brand background so glass blur is visible */
-  background:
-    radial-gradient(900px circle at 12% 10%, rgba(233, 69, 96, 0.14), transparent 60%),
-    radial-gradient(900px circle at 88% 18%, rgba(22, 33, 62, 0.18), transparent 58%),
-    linear-gradient(180deg, var(--page-bg) 0%, #f0f2f5 100%);
+/* Ambient background orbs */
+/* Minimal ambient background orbs */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(140px);
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+body::before {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(5, 150, 105, 0.04), transparent 70%);
+  top: -200px;
+  right: -200px;
+  animation: orbFloat 25s ease-in-out infinite alternate;
+}
+
+body::after {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.02), transparent 70%);
+  bottom: -150px;
+  left: -150px;
+  animation: orbFloat 30s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes orbFloat {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(15px, -10px) scale(1.05); }
+  100% { transform: translate(-10px, 15px) scale(0.98); }
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
+  /* Let browser handle scroll on main thread composited layer */
+  overflow-y: scroll;
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  body::before,
+  body::after {
+    animation: none;
   }
 }
 
@@ -64,4 +165,38 @@ img {
 h1 {
   font-size: 1.8rem;
   line-height: 1.2;
+  color: var(--text-heading);
+}
+
+h2, h3, h4, h5, h6 {
+  color: var(--text-heading);
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Selection styling */
+::selection {
+  background: rgba(5, 150, 105, 0.35);
+  color: #fff;
 }

@@ -83,7 +83,7 @@ const Cart = () => {
         <div className="cart-items">
           {cartItems.map((item) => (
             <div key={item.cartKey || item._id} className="cart-item">
-              <img src={item.images?.[0]?.url || "https://placehold.co/400x400/2d3436/dfe6e9/webp?text=No+Image"} alt={item.name} />
+              <img src={item.images?.[0]?.url || "https://placehold.co/400x400/2d3436/dfe6e9/webp?text=No+Image"} alt={item.name} loading="lazy" decoding="async" />
               <div className="cart-item-info">
                 <Link to={`/product/${item._id}`}>{item.name}</Link>
                 {item.selectedColor && (

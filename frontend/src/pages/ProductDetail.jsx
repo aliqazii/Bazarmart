@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { FaStar, FaRegStar, FaStarHalfAlt, FaBell, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaStar, FaRegStar, FaStarHalfAlt, FaBell, FaChevronLeft, FaChevronRight, FaShieldAlt, FaTruck, FaUndo, FaCheckCircle } from "react-icons/fa";
 import ProductCard from "../components/ProductCard";
 import { useAuth } from "../context/AuthContext";
 import useScrollReveal from "../hooks/useScrollReveal";
@@ -303,6 +303,12 @@ const ProductDetail = () => {
 
   const images = activeImages;
 
+  // Compute rating distribution for summary bar
+  const ratingDistribution = [5, 4, 3, 2, 1].map((star) => {
+    const count = reviews.filter((r) => r.rating === star).length;
+    return { star, count, percent: reviews.length > 0 ? (count / reviews.length) * 100 : 0 };
+  });
+
   return (
     <div className="product-detail">
       {/* Breadcrumb */}
@@ -310,138 +316,208 @@ const ProductDetail = () => {
         <Link to="/">Home</Link> / <Link to={`/products?category=${encodeURIComponent(product.category)}`}>{product.category}</Link> / <span>{product.name}</span>
       </div>
 
-      <div className="product-detail-image">
-        <div className="image-gallery">
-          {images.length > 1 && (
-            <button className="gallery-nav prev" onClick={() => setSelectedImage((i) => (i - 1 + images.length) % images.length)}>
-              <FaChevronLeft />
-            </button>
-          )}
-          <img
-            ref={imageRef}
-            src={images[selectedImage]?.url}
-            alt={product.name}
-            onMouseMove={handleImageMove}
-            onMouseLeave={handleImageLeave}
-          />
-          {images.length > 1 && (
-            <button className="gallery-nav next" onClick={() => setSelectedImage((i) => (i + 1) % images.length)}>
-              <FaChevronRight />
-            </button>
-          )}
-        </div>
-        {images.length > 1 && (
-          <div className="image-thumbnails">
-            {images.map((img, i) => (
+      {/* === Top Section: Image + Info side by side === */}
+      <div className="pd-top-section">
+        {/* Left: Image Gallery */}
+        <div className="pd-image-col">
+          <div className="product-detail-image">
+            <div className="image-gallery">
+              {images.length > 1 && (
+                <button className="gallery-nav prev" onClick={() => setSelectedImage((i) => (i - 1 + images.length) % images.length)}>
+                  <FaChevronLeft />
+                </button>
+              )}
               <img
-                key={i}
-                src={img.url}
-                alt={`${product.name} ${i + 1}`}
-                className={selectedImage === i ? "active" : ""}
-                onClick={() => setSelectedImage(i)}
+                ref={imageRef}
+                src={images[selectedImage]?.url}
+                alt={product.name}
+                onMouseMove={handleImageMove}
+                onMouseLeave={handleImageLeave}
+                fetchPriority="high"
+                decoding="async"
               />
-            ))}
+              {images.length > 1 && (
+                <button className="gallery-nav next" onClick={() => setSelectedImage((i) => (i + 1) % images.length)}>
+                  <FaChevronRight />
+                </button>
+              )}
+            </div>
+            {images.length > 1 && (
+              <div className="image-thumbnails">
+                {images.map((img, i) => (
+                  <img
+                    key={i}
+                    src={img.url}
+                    alt={`${product.name} ${i + 1}`}
+                    className={selectedImage === i ? "active" : ""}
+                    onClick={() => setSelectedImage(i)}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Right: Product Info */}
+        <div className="pd-info-col">
+          <div className="product-detail-info">
+            <span className="pd-category-badge">{product.category}</span>
+            <h1>{product.name}</h1>
+            <p className="product-id">SKU: {product._id?.slice(-8).toUpperCase()}</p>
+
+            <div className="product-detail-rating">
+              <div className="stars-display">
+                {[1, 2, 3, 4, 5].map((s) => {
+                  if (s <= fullStars) return <FaStar key={s} className="star-filled" />;
+                  if (s === fullStars + 1 && hasHalfStar) return <FaStarHalfAlt key={s} className="star-filled" />;
+                  return <FaRegStar key={s} className="star-empty" />;
+                })}
+              </div>
+              <span className="pd-rating-text">{ratingValue.toFixed(1)}/5</span>
+              <span className="pd-review-count">({reviewCount} {reviewCount === 1 ? 'Review' : 'Reviews'})</span>
+            </div>
+
+            {product.gender && (
+              <span className={`gender-badge gender-${product.gender.toLowerCase()}`}>
+                {product.gender}
+              </span>
+            )}
+
+            <div className="pd-price-block">
+              <h2 className="product-detail-price">${product.price}</h2>
+              <p className={`stock-status ${product.stock < 1 ? "out" : "in"}`}>
+                <FaCheckCircle /> {product.stock < 1 ? "Out of Stock" : "In Stock"}
+              </p>
+            </div>
+
+            <div className="pd-divider" />
+
+            {isShoe && availableColorOptions.length > 0 && (
+              <div className="color-selector">
+                <h3>Select Color</h3>
+                <div className="color-options">
+                  {availableColorOptions.map((option) => (
+                    <button
+                      key={option.name}
+                      className={`color-btn ${selectedColorOption?.name === option.name ? "active" : ""}`}
+                      onClick={() => {
+                        setSelectedColor(option.name);
+                        setSelectedImage(0);
+                      }}
+                    >
+                      <span
+                        className="color-swatch"
+                        style={{ backgroundColor: option.swatch || option.name.toLowerCase() }}
+                      />
+                      <span>{option.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(isClothing || isShoe) && (
+              <div className="size-selector">
+                <h3>{isShoe ? "Select Shoe Size" : "Select Size"}</h3>
+                <div className="size-options">
+                  {availableSizes.map((size) => (
+                    <button
+                      key={size}
+                      className={`size-btn ${selectedSize === size ? "active" : ""}`}
+                      onClick={() => setSelectedSize(size)}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="product-detail-cart premium-cart-bar">
+              <div className="premium-quantity">
+                <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}>-</button>
+                <span>{quantity}</span>
+                <button onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}>+</button>
+              </div>
+              <button onClick={addToCart} disabled={product.stock < 1} className="premium-add-btn">
+                Add to Cart
+              </button>
+            </div>
+
+            {product.stock < 1 && user && !stockAlertActive && (
+              <button className="stock-alert-btn" onClick={handleStockAlert}>
+                <FaBell /> Notify me when available
+              </button>
+            )}
+            {stockAlertActive && (
+              <p className="stock-alert-active"><FaBell /> You'll be notified when this item is back in stock</p>
+            )}
+
+            {/* Trust badges */}
+            <div className="pd-trust-badges">
+              <div className="pd-trust-item">
+                <FaShieldAlt />
+                <span>Secure Checkout</span>
+              </div>
+              <div className="pd-trust-item">
+                <FaTruck />
+                <span>Fast Shipping</span>
+              </div>
+              <div className="pd-trust-item">
+                <FaUndo />
+                <span>Easy Returns</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="product-detail-info">
-        <h1>{product.name}</h1>
-        <p className="product-id">Product #{product._id}</p>
-
-        <div className="product-detail-rating">
-          <div className="stars-display">
-            {[1, 2, 3, 4, 5].map((s) => {
-              if (s <= fullStars) return <FaStar key={s} className="star-filled" />;
-              if (s === fullStars + 1 && hasHalfStar) return <FaStarHalfAlt key={s} className="star-filled" />;
-              return <FaRegStar key={s} className="star-empty" />;
-            })}
-          </div>
-          <span>{ratingValue.toFixed(1)}/5 ({reviewCount} Reviews)</span>
-        </div>
-
-        {product.gender && (
-          <span className={`gender-badge gender-${product.gender.toLowerCase()}`}>
-            {product.gender}
-          </span>
-        )}
-
-        <h2 className="product-detail-price">${product.price}</h2>
-
-        {isShoe && availableColorOptions.length > 0 && (
-          <div className="color-selector">
-            <h3>Select Color</h3>
-            <div className="color-options">
-              {availableColorOptions.map((option) => (
-                <button
-                  key={option.name}
-                  className={`color-btn ${selectedColorOption?.name === option.name ? "active" : ""}`}
-                  onClick={() => {
-                    setSelectedColor(option.name);
-                    setSelectedImage(0);
-                  }}
-                >
-                  <span
-                    className="color-swatch"
-                    style={{ backgroundColor: option.swatch || option.name.toLowerCase() }}
-                  />
-                  <span>{option.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {(isClothing || isShoe) && (
-          <div className="size-selector">
-            <h3>{isShoe ? "Select Shoe Size" : "Select Size"}</h3>
-            <div className="size-options">
-              {availableSizes.map((size) => (
-                <button
-                  key={size}
-                  className={`size-btn ${selectedSize === size ? "active" : ""}`}
-                  onClick={() => setSelectedSize(size)}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="product-detail-cart">
-          <div className="quantity-controls">
-            <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}>-</button>
-            <span>{quantity}</span>
-            <button onClick={() => setQuantity((q) => Math.min(product.stock, q + 1))}>+</button>
-          </div>
-          <button onClick={addToCart} disabled={product.stock < 1} className="add-to-cart-btn">
-            Add to Cart
-          </button>
-        </div>
-
-        <p className={`stock-status ${product.stock < 1 ? "out" : "in"}`}>
-          Status: {product.stock < 1 ? "Out of Stock" : "In Stock"}
-        </p>
-
-        {product.stock < 1 && user && !stockAlertActive && (
-          <button className="stock-alert-btn" onClick={handleStockAlert}>
-            <FaBell /> Notify me when available
-          </button>
-        )}
-        {stockAlertActive && (
-          <p className="stock-alert-active"><FaBell /> You'll be notified when this item is back in stock</p>
-        )}
-
-        <div className="product-detail-description">
-          <h3>Description</h3>
+      {/* === Description Section (full width) === */}
+      <div className="pd-description-section">
+        <div className="pd-desc-card">
+          <h3>Product Description</h3>
           <p>{product.description}</p>
         </div>
       </div>
 
-      {/* Reviews Section */}
+      {/* === Reviews Section (full width, improved layout) === */}
       <div className="reviews-section">
-        <h2>Customer Reviews ({reviews.length})</h2>
+        <div className="pd-reviews-header">
+          <h2>Customer Reviews</h2>
+          <span className="pd-reviews-count">{reviews.length} {reviews.length === 1 ? 'Review' : 'Reviews'}</span>
+        </div>
+
+        {/* Rating Summary */}
+        {reviews.length > 0 && (
+          <div className="pd-rating-summary">
+            <div className="pd-rating-big">
+              <span className="pd-rating-number">{ratingValue.toFixed(1)}</span>
+              <div className="pd-rating-stars-wrap">
+                <div className="stars-display">
+                  {[1, 2, 3, 4, 5].map((s) => {
+                    if (s <= fullStars) return <FaStar key={s} className="star-filled" />;
+                    if (s === fullStars + 1 && hasHalfStar) return <FaStarHalfAlt key={s} className="star-filled" />;
+                    return <FaRegStar key={s} className="star-empty" />;
+                  })}
+                </div>
+                <span className="pd-rating-total">Based on {reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}</span>
+              </div>
+            </div>
+            <div className="pd-rating-bars">
+              {ratingDistribution.map(({ star, count, percent }) => (
+                <div key={star} className="pd-rating-bar-row">
+                  <span className="pd-bar-label">{star} ★</span>
+                  <div className="pd-bar-track">
+                    <div className="pd-bar-fill" style={{ width: `${percent}%` }} />
+                  </div>
+                  <span className="pd-bar-count">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {user && (
           <form className="review-form" onSubmit={handleSubmitReview}>
@@ -473,15 +549,20 @@ const ProductDetail = () => {
         ) : (
           <div className="reviews-list">
             {reviews.map((r) => (
-              <div key={r._id} className="review-card">
+              <div key={r._id} className="premium-review-item">
                 <div className="review-header">
-                  <strong>{r.user?.name || "User"}</strong>
+                  <div className="review-user-avatar">
+                    {(r.user?.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="review-user-info">
+                    <strong>{r.user?.name || "User"}</strong>
+                    <span className="review-date">{new Date(r.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                  </div>
                   <div className="review-stars">
                     {[1, 2, 3, 4, 5].map((s) =>
                       s <= r.rating ? <FaStar key={s} className="star-filled" /> : <FaRegStar key={s} className="star-empty" />
                     )}
                   </div>
-                  <span className="review-date">{new Date(r.createdAt).toLocaleDateString()}</span>
                 </div>
                 <p className="review-comment">{r.comment}</p>
               </div>

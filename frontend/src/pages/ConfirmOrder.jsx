@@ -126,6 +126,8 @@ const ConfirmOrder = () => {
                 <img
                   src={item.images?.[0]?.url || "https://placehold.co/400x400/2d3436/dfe6e9/webp?text=No+Image"}
                   alt={item.name}
+                  loading="lazy"
+                  decoding="async"
                 />
                 <span>
                   {item.name}

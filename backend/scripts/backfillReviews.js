@@ -187,8 +187,8 @@ const backfill = async () => {
       const comment = pick(templates);
 
       reviewDocs.push({
-        user: u._id,
-        product: product._id,
+        user: new mongoose.Types.ObjectId(userId),
+        product: new mongoose.Types.ObjectId(product._id),
         rating,
         comment,
       });

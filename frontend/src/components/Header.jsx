@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FaShoppingCart, FaUser, FaTachometerAlt, FaBars, FaTimes, FaStore, FaHeart, FaSearch } from "react-icons/fa";
+import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
@@ -28,7 +29,7 @@ const Header = () => {
       const prev = prevCartCountRef.current;
       prevCartCountRef.current = nextCount;
 
-      // Arm CTA when count increases (item added). Actual visibility is computed from timestamps.
+      // Arm CTA when count increases (item added).
       if (nextCount > prev && location.pathname !== "/cart") {
         localStorage.setItem("lastCartAddAt", String(Date.now()));
       }
@@ -49,11 +50,7 @@ const Header = () => {
     }
   }, [location.pathname]);
 
-  const showMobileCartCta = (() => {
-    const lastAddAt = Number(localStorage.getItem("lastCartAddAt") || 0);
-    const lastViewedAt = Number(localStorage.getItem("lastCartViewedAt") || 0);
-    return cartCount > 0 && location.pathname !== "/cart" && lastAddAt > lastViewedAt;
-  })();
+  const showMobileCartCta = cartCount > 0 && location.pathname !== "/cart";
 
   // Search autocomplete
   useEffect(() => {
@@ -113,11 +110,24 @@ const Header = () => {
   };
 
   return (
-    <header className="header">
+    <>
+    {/* CSS animation class handles the once-only fade-in (no Framer Motion re-trigger on route change) */}
+    <header
+      className="header header--animated"
+      style={{
+        background: "rgba(15, 17, 21, 0.88)",
+        boxShadow: "0 2px 20px rgba(0,0,0,0.22)",
+        backdropFilter: "blur(18px) saturate(160%)",
+        WebkitBackdropFilter: "blur(18px) saturate(160%)",
+        borderBottom: "1px solid rgba(16, 185, 129,0.12)"
+      }}
+    >
       <div className="header-content">
-        <Link to="/" className="logo" onClick={closeMenu}>
-          <FaStore className="logo-icon" /> Bazarmart
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Link to="/" className="logo" onClick={closeMenu}>
+            <FaStore className="logo-icon" /> Bazarmart
+          </Link>
+        </div>
 
         {/* Search bar */}
         <div className="header-search" ref={searchRef}>
@@ -142,6 +152,10 @@ const Header = () => {
                   <img
                     src={item.images?.[0]?.url || "https://placehold.co/40x40"}
                     alt={item.name}
+                    loading="lazy"
+                    decoding="async"
+                    width="40"
+                    height="40"
                   />
                   <div className="autocomplete-item-info">
                     <span>{item.name}</span>
@@ -205,19 +219,24 @@ const Header = () => {
         </nav>
       </div>
       {menuOpen && <div className="nav-overlay" onClick={closeMenu} />}
-
-      {showMobileCartCta && cartCount > 0 && location.pathname !== "/cart" && (
-        <Link
-          to="/cart"
-          className="mobile-view-cart"
-          onClick={() => {
-            closeMenu();
-          }}
-        >
-          View Cart ({cartCount})
-        </Link>
-      )}
     </header>
+
+    {/* Floating Cart — portalled to body, icon-only circular button */}
+    {showMobileCartCta && createPortal(
+      <Link
+        to="/cart"
+        className="mobile-view-cart"
+        style={{ position: "fixed" }}
+        onClick={() => {
+          closeMenu();
+        }}
+      >
+        <FaShoppingCart />
+        <span className="mobile-cart-badge">{cartCount}</span>
+      </Link>,
+      document.body
+    )}
+    </>
   );
 };
 

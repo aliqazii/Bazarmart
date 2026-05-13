@@ -1,8 +1,8 @@
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Outlet } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -46,108 +46,114 @@ const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const ChatBot = lazy(() => import("./components/ChatBot"));
 
-const RouteLoader = () => <div className="loader">Loading...</div>;
+const RouteLoader = () => (
+  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh", backgroundColor: "var(--page-bg)", width: "100%" }}>
+    <div style={{ 
+      width: "40px", 
+      height: "40px", 
+      border: "3px solid rgba(16, 185, 129, 0.15)", 
+      borderTopColor: "var(--brand-accent)", 
+      borderRadius: "50%", 
+      animation: "spin 1s linear infinite" 
+    }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
 
-const MotionRouteContainer = motion.div;
+const StoreLayout = () => (
+  <>
+    <Header />
+    <main className="main-content">
+      <Suspense fallback={<RouteLoader />}>
+        <Outlet />
+      </Suspense>
+    </main>
+    <Footer />
+  </>
+);
 
-function AnimatedRoutes() {
-  const location = useLocation();
-  const shouldReduceMotion = useReducedMotion();
-
-  const isAdmin = location.pathname.startsWith("/admin");
-  const yDistance = shouldReduceMotion ? 0 : isAdmin ? 0 : 10;
-  const duration = shouldReduceMotion ? 0.01 : isAdmin ? 0.14 : 0.22;
-
-  const rotateXIn = shouldReduceMotion ? 0 : isAdmin ? 3 : 12;
-  const rotateYIn = shouldReduceMotion ? 0 : isAdmin ? -3 : -10;
-  const zIn = shouldReduceMotion ? 0 : isAdmin ? -10 : -42;
-
-  // Suspense fallback is a lightweight loader for quick perceived loading
-  return (
+const AdminLayoutWrapper = () => (
+  <ProtectedRoute adminOnly>
     <Suspense fallback={<RouteLoader />}>
-      <AnimatePresence mode="wait" initial={false}>
-        <div className="route-perspective">
-          <MotionRouteContainer
-            key={location.pathname}
-            initial={{ opacity: 0, y: yDistance, rotateX: rotateXIn, rotateY: rotateYIn, z: zIn, scale: shouldReduceMotion ? 1 : 0.988 }}
-            animate={{ opacity: 1, y: 0, rotateX: 0, rotateY: 0, z: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -yDistance, rotateX: -rotateXIn, rotateY: -rotateYIn, z: zIn, scale: shouldReduceMotion ? 1 : 0.99 }}
-            transition={{ duration, ease: "easeOut" }}
-            style={{ transformStyle: "preserve-3d" }}
-          >
-            <Routes location={location}>
-            {/* Store Routes - with Header/Footer */}
-            <Route path="/" element={<><Header /><main className="main-content"><Home /></main><Footer /></>} />
-            <Route path="/products" element={<><Header /><main className="main-content"><Products /></main><Footer /></>} />
-            <Route path="/product/:id" element={<><Header /><main className="main-content"><ProductDetail /></main><Footer /></>} />
-            <Route path="/login" element={<><Header /><main className="main-content"><Login /></main><Footer /></>} />
-            <Route path="/register" element={<><Header /><main className="main-content"><Register /></main><Footer /></>} />
-            <Route path="/cart" element={<><Header /><main className="main-content"><Cart /></main><Footer /></>} />
-            <Route path="/contact" element={<><Header /><main className="main-content"><Contact /></main><Footer /></>} />
-            <Route path="/shipping-policy" element={<><Header /><main className="main-content"><ShippingPolicy /></main><Footer /></>} />
-            <Route path="/return-policy" element={<><Header /><main className="main-content"><ReturnPolicy /></main><Footer /></>} />
-            <Route path="/privacy-policy" element={<><Header /><main className="main-content"><PrivacyPolicy /></main><Footer /></>} />
-            <Route path="/terms-of-service" element={<><Header /><main className="main-content"><TermsOfService /></main><Footer /></>} />
-
-            {/* Protected Routes */}
-            <Route path="/profile" element={<><Header /><main className="main-content"><ProtectedRoute><Profile /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/shipping" element={<><Header /><main className="main-content"><ProtectedRoute><Shipping /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/order/confirm" element={<><Header /><main className="main-content"><ProtectedRoute><ConfirmOrder /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/payment" element={<><Header /><main className="main-content"><ProtectedRoute><Payment /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/orders" element={<><Header /><main className="main-content"><ProtectedRoute><Orders /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/order/:id" element={<><Header /><main className="main-content"><ProtectedRoute><OrderDetail /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/tracking/:id" element={<><Header /><main className="main-content"><ProtectedRoute><Tracking /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/wishlist" element={<><Header /><main className="main-content"><ProtectedRoute><Wishlist /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/compare" element={<><Header /><main className="main-content"><Compare /></main><Footer /></>} />
-            <Route path="/returns" element={<><Header /><main className="main-content"><ProtectedRoute><Returns /></ProtectedRoute></main><Footer /></>} />
-            <Route path="/rewards" element={<><Header /><main className="main-content"><ProtectedRoute><Rewards /></ProtectedRoute></main><Footer /></>} />
-
-            {/* Admin Routes - with AdminLayout sidebar, no Header/Footer */}
-            <Route path="/admin" element={<ProtectedRoute adminOnly><AdminLayout /></ProtectedRoute>}>
-              <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="products" element={<AdminProducts />} />
-              <Route path="product/new" element={<AdminProductForm />} />
-              <Route path="product/:id" element={<AdminProductForm />} />
-              <Route path="orders" element={<AdminOrders />} />
-              <Route path="users" element={<AdminUsers />} />
-              <Route path="coupons" element={<AdminCoupons />} />
-              <Route path="activity-log" element={<AdminActivityLog />} />
-              <Route path="returns" element={<AdminReturns />} />
-              <Route path="analytics" element={<AdminAnalytics />} />
-              <Route path="tracking" element={<AdminTracking />} />
-            </Route>
-
-            <Route path="*" element={<><Header /><main className="main-content"><NotFound /></main><Footer /></>} />
-            </Routes>
-          </MotionRouteContainer>
-        </div>
-      </AnimatePresence>
+      <Outlet />
     </Suspense>
+  </ProtectedRoute>
+);
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<StoreLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/shipping-policy" element={<ShippingPolicy />} />
+        <Route path="/return-policy" element={<ReturnPolicy />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
+        <Route path="/compare" element={<Compare />} />
+        <Route path="*" element={<NotFound />} />
+
+        {/* Protected Store Routes */}
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/shipping" element={<ProtectedRoute><Shipping /></ProtectedRoute>} />
+        <Route path="/order/confirm" element={<ProtectedRoute><ConfirmOrder /></ProtectedRoute>} />
+        <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+        <Route path="/order/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+        <Route path="/tracking/:id" element={<ProtectedRoute><Tracking /></ProtectedRoute>} />
+        <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />
+        <Route path="/returns" element={<ProtectedRoute><Returns /></ProtectedRoute>} />
+        <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+      </Route>
+
+      {/* Admin Routes */}
+      <Route path="/admin" element={<AdminLayoutWrapper />}>
+        <Route element={<AdminLayout />}>
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="product/new" element={<AdminProductForm />} />
+          <Route path="product/:id" element={<AdminProductForm />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="coupons" element={<AdminCoupons />} />
+          <Route path="activity-log" element={<AdminActivityLog />} />
+          <Route path="returns" element={<AdminReturns />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="tracking" element={<AdminTracking />} />
+        </Route>
+      </Route>
+    </Routes>
   );
 }
 
-function App() {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-
-  const app = (
-    <Router>
-      <ScrollToTop />
-      <SeoManager />
-      <AnimatedRoutes />
-      <Toaster position="bottom-center" />
-      <Suspense fallback={null}>
-        <ChatBot />
-      </Suspense>
-    </Router>
+// Extracted outside App to avoid re-creation on every render
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const Providers = ({ children }) =>
+  googleClientId ? (
+    <GoogleOAuthProvider clientId={googleClientId}>{children}</GoogleOAuthProvider>
+  ) : (
+    <>{children}</>
   );
 
+function App() {
   return (
     <AuthProvider>
-      {googleClientId ? (
-        <GoogleOAuthProvider clientId={googleClientId}>{app}</GoogleOAuthProvider>
-      ) : (
-        app
-      )}
+      <Providers>
+        <Router>
+          <ScrollToTop />
+          <SeoManager />
+          <AppRoutes />
+          <Toaster position="bottom-center" />
+          <Suspense fallback={null}>
+            <ChatBot />
+          </Suspense>
+        </Router>
+      </Providers>
     </AuthProvider>
   );
 }

@@ -23,15 +23,18 @@ import {
   FaPercentage,
 } from "react-icons/fa";
 import useDocumentMeta from "../hooks/useDocumentMeta";
+import { motion } from "framer-motion";
+import { fadeInUp, slideInUp, staggerGrid, glassReveal } from "../motionVariants";
+
 
 const categories = [
-  { name: "Electronics", icon: FaLaptop, color: "#3b82f6", bg: "#eff6ff" },
-  { name: "Clothing", icon: FaTshirt, color: "#8b5cf6", bg: "#f5f3ff" },
-  { name: "Books", icon: FaBook, color: "#10b981", bg: "#ecfdf5" },
-  { name: "Shoes", icon: FaShoePrints, color: "#f59e0b", bg: "#fffbeb" },
-  { name: "Accessories", icon: FaGem, color: "#ec4899", bg: "#fdf2f8" },
-  { name: "Home", icon: FaCouch, color: "#6366f1", bg: "#eef2ff" },
-  { name: "Sports", icon: FaFootballBall, color: "#14b8a6", bg: "#f0fdfa" },
+  { name: "Electronics", icon: FaLaptop, color: "#60a5fa", bg: "rgba(16, 185, 129,0.15)" },
+  { name: "Clothing", icon: FaTshirt, color: "#a78bfa", bg: "rgba(16, 185, 129,0.15)" },
+  { name: "Books", icon: FaBook, color: "#34d399", bg: "rgba(16,185,129,0.15)" },
+  { name: "Shoes", icon: FaShoePrints, color: "#fbbf24", bg: "rgba(245,158,11,0.15)" },
+  { name: "Accessories", icon: FaGem, color: "#f472b6", bg: "rgba(236,72,153,0.15)" },
+  { name: "Home", icon: FaCouch, color: "var(--brand-accent-hover)", bg: "rgba(16, 185, 129,0.15)" },
+  { name: "Sports", icon: FaFootballBall, color: "#2dd4bf", bg: "rgba(20,184,166,0.15)" },
 ];
 
 const pickTopRated = (products = []) => {
@@ -190,10 +193,10 @@ const Home = () => {
   }
 
   return (
-    <div className="home">
+    <motion.div className="home" initial="initial" animate="animate">
       {errorMsg && <p className="no-products">{errorMsg}</p>}
       {/* ===== HERO SECTION ===== */}
-      <section className="hero">
+      <motion.section className="hero" variants={slideInUp}>
         <div className="hero-bg" />
         {/* Animated particles */}
         <div className="hero-particles">
@@ -248,7 +251,15 @@ const Home = () => {
                 className={`hero-product-card hero-product-card-${i + 1}`}
               >
                 <div className="hero-product-img">
-                  <img src={product.images?.[0]?.url} alt={product.name} />
+                  <img
+                    src={product.images?.[0]?.url}
+                    alt={product.name}
+                    loading={i < 2 ? "eager" : "lazy"}
+                    fetchPriority={i < 2 ? "high" : "low"}
+                    decoding="async"
+                    width="200"
+                    height="200"
+                  />
                 </div>
                 <div className="hero-product-info">
                   <span className="hero-product-name">{product.name?.slice(0, 22)}</span>
@@ -268,15 +279,15 @@ const Home = () => {
             <span>Top Rated</span>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* ===== VALUE PROPS ===== */}
-      <section className="value-props">
-        <div className="value-prop">
+      <motion.section className="value-props" variants={staggerGrid} initial="initial" whileInView="animate" viewport={{ once: true, amount: 0.2 }}>
+        <motion.div className="value-prop" variants={glassReveal}>
           <div className="value-prop-icon"><FaTruck /></div>
           <h4>Free Shipping</h4>
           <p>On orders over $50</p>
-        </div>
+        </motion.div>
         <div className="value-prop">
           <div className="value-prop-icon"><FaShieldAlt /></div>
           <h4>Secure Payment</h4>
@@ -292,10 +303,11 @@ const Home = () => {
           <h4>24/7 Support</h4>
           <p>Dedicated help</p>
         </div>
-      </section>
+      </motion.section>
 
       {/* ===== SHOP BY CATEGORY ===== */}
-      <section className="home-section home-animate" ref={categoryRef}>
+      {/* Uses IntersectionObserver + CSS for perf instead of Framer stagger */}
+      <section className="home-section" ref={categoryRef}>
         <div className="section-header">
           <div>
             <h2>Shop by Category</h2>
@@ -327,7 +339,8 @@ const Home = () => {
       </section>
 
       {/* ===== FEATURED PRODUCTS ===== */}
-      <section className="home-section home-animate" ref={featuredRef}>
+      {/* Plain section — IntersectionObserver adds home-visible class for CSS reveal */}
+      <section className="home-section" ref={featuredRef}>
         <div className="section-header">
           <div>
             <h2><FaStar className="section-icon" /> Featured Products</h2>
@@ -345,7 +358,7 @@ const Home = () => {
       </section>
 
       {/* ===== PROMO BANNER ===== */}
-      <section className="promo-banner">
+      <motion.section className="promo-banner" initial={{ opacity: 0, scale: 0.97 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.5, ease: 'easeOut' }}>
         <div className="promo-content">
           <span className="promo-badge">Limited Time Offer</span>
           <h2>Get Up To 30% Off</h2>
@@ -359,10 +372,10 @@ const Home = () => {
           <div className="promo-circle promo-circle-2" />
           <div className="promo-circle promo-circle-3" />
         </div>
-      </section>
+      </motion.section>
 
       {/* ===== TRENDING NOW ===== */}
-      <section className="home-section home-animate" ref={trendingRef}>
+      <section className="home-section" ref={trendingRef}>
         <div className="section-header">
           <div>
             <h2><FaFire className="section-icon trending-icon" /> Trending Now</h2>
@@ -398,7 +411,7 @@ const Home = () => {
           </div>
         </section>
       )}
-    </div>
+    </motion.div>
   );
 };
 

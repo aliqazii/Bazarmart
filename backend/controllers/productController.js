@@ -4,6 +4,8 @@ import Review from "../models/reviewModel.js";
 import ErrorHandler from "../utils/errorHandler.js";
 import catchAsync from "../middleware/catchAsync.js";
 
+const topReviewsCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 // Create Product -- Admin
 export const createProduct = catchAsync(async (req, res, next) => {
   req.body.user = req.user._id;
@@ -59,21 +61,34 @@ export const getAllProducts = catchAsync(async (req, res, next) => {
   else if (sort === "popular") sortOption = { numOfReviews: -1 };
   else if (sort === "newest") sortOption = { createdAt: -1 };
 
-  const productsCount = await Product.countDocuments(query);
-  const products = await Product.find(query)
-    .sort(sortOption)
-    .limit(resultsPerPage)
-    .skip(skip)
-    .lean();
+  const [productsCount, products] = await Promise.all([
+    Product.countDocuments(query),
+    Product.find(query)
+      .sort(sortOption)
+      .limit(resultsPerPage)
+      .skip(skip)
+      .lean()
+  ]);
 
   // Optional: include a small preview of recent reviews per product (for cards/grids)
   const includeTopReviews = String(req.query.includeTopReviews || "").toLowerCase();
   if (includeTopReviews === "1" || includeTopReviews === "true" || includeTopReviews === "yes") {
     const productIds = products.map((p) => p?._id).filter(Boolean);
+    const uncachedIds = [];
+    const now = Date.now();
 
-    if (productIds.length > 0) {
+    products.forEach((p) => {
+      const cached = topReviewsCache.get(String(p._id));
+      if (cached && now - cached.timestamp < CACHE_TTL) {
+        p.topReviews = cached.data;
+      } else {
+        uncachedIds.push(p._id);
+      }
+    });
+
+    if (uncachedIds.length > 0) {
       const previewAgg = await Review.aggregate([
-        { $match: { product: { $in: productIds } } },
+        { $match: { product: { $in: uncachedIds } } },
         { $sort: { createdAt: -1 } },
         {
           $lookup: {
@@ -107,8 +122,13 @@ export const getAllProducts = catchAsync(async (req, res, next) => {
       ]);
 
       const previewByProductId = new Map(previewAgg.map((x) => [String(x._id), x.topReviews || []]));
+      
       products.forEach((p) => {
-        p.topReviews = previewByProductId.get(String(p._id)) || [];
+        if (!p.topReviews) {
+          const reviewsData = previewByProductId.get(String(p._id)) || [];
+          topReviewsCache.set(String(p._id), { data: reviewsData, timestamp: now });
+          p.topReviews = reviewsData;
+        }
       });
     }
   }

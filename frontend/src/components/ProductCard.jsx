@@ -1,8 +1,10 @@
+import React, { memo, useState } from "react";
 import { Link } from "react-router-dom";
 import { FaStar, FaRegStar, FaStarHalfAlt, FaShoppingCart, FaHeart, FaRegHeart } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import { motion, useReducedMotion } from "framer-motion";
+import { fadeInUp, cartBounce } from "../motionVariants";
 
 const MotionLink = motion(Link);
 
@@ -33,6 +35,7 @@ const ProductCard = ({ product }) => {
 
   const imageUrl = product.images?.[0]?.url || "https://placehold.co/400x400/2d3436/dfe6e9/webp?text=No+Image";
 
+  const [cartAnim, setCartAnim] = useState(false);
   const addToCart = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -45,6 +48,7 @@ const ProductCard = ({ product }) => {
     }
     localStorage.setItem("cart", JSON.stringify(cart));
     window.dispatchEvent(new Event("cartUpdated"));
+    setCartAnim(true);
     toast.success("Added to cart");
   };
 
@@ -59,21 +63,14 @@ const ProductCard = ({ product }) => {
     if (result) toast.success(result.message);
   };
 
-  // Use only scale and y for animation to prevent flicker
-  const cardMotionProps = shouldReduceMotion
-    ? {}
-    : {
-        initial: { opacity: 0, y: 14, scale: 1 },
-        animate: { opacity: 1, y: 0, scale: 1 },
-        transition: { duration: 0.24, ease: "easeOut" },
-        whileHover: { y: -3, scale: 1.02 },
-        whileTap: { scale: 0.99 },
-      };
+
+  // Only use fadeInUp for entry animation; hover is handled by CSS for perf
+  const cardMotionProps = shouldReduceMotion ? {} : { ...fadeInUp };
 
   return (
     <MotionLink
       to={`/product/${product._id}`}
-      className="product-card"
+      className="product-card product-card--glass"
       {...cardMotionProps}
     >
       <div className="product-card-image-wrap">
@@ -81,9 +78,10 @@ const ProductCard = ({ product }) => {
           src={imageUrl}
           alt={product.name}
           loading="lazy"
+          decoding="async"
           width="400"
           height="220"
-          style={{ display: 'block', width: '100%', height: '220px', objectFit: 'cover', background: '#fafafa' }}
+          className="product-card-img-element"
         />
         {discount > 0 && <span className="product-card-badge">-{discount}%</span>}
         {product.stock < 1 && <span className="product-card-badge out-badge">Sold Out</span>}
@@ -95,14 +93,17 @@ const ProductCard = ({ product }) => {
           >
             {isWished ? <FaHeart /> : <FaRegHeart />}
           </button>
-          <button
+          <motion.button
             className="product-card-cart-btn"
             onClick={addToCart}
             disabled={product.stock < 1}
             title="Add to cart"
+            animate={cartAnim ? "animate" : false}
+            variants={cartBounce}
+            onAnimationComplete={() => setCartAnim(false)}
           >
             <FaShoppingCart />
-          </button>
+          </motion.button>
         </div>
       </div>
       <div className="product-card-info">
@@ -119,28 +120,6 @@ const ProductCard = ({ product }) => {
           <span className="rating-value">{ratingValue.toFixed(1)}</span>
           <span className="rating-count">({reviewCount})</span>
         </div>
-
-        {topReviews.length > 0 && (
-          <div className="product-card-reviews-preview">
-            {topReviews.slice(0, 2).map((r) => (
-              <div key={r._id || `${product._id}_${r.createdAt}_${r.rating}`} className="product-card-review-item">
-                <div className="product-card-review-meta">
-                  <span className="product-card-review-user">{r.user?.name || "User"}</span>
-                  <span className="product-card-review-stars" aria-label={`Review rating ${Number(r.rating || 0)} out of 5`}>
-                    {[1, 2, 3, 4, 5].map((s) =>
-                      s <= Number(r.rating || 0)
-                        ? <FaStar key={s} className="star-filled" />
-                        : <FaRegStar key={s} className="star-empty" />
-                    )}
-                  </span>
-                </div>
-                <div className="product-card-review-comment">
-                  {String(r.comment || "").trim()}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
         <div className="product-card-pricing">
           <span className="product-card-price">${Number(product.price || 0).toFixed(2)}</span>
           {originalPrice && <span className="product-card-original">${originalPrice}</span>}

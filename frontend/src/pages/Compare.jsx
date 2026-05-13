@@ -86,7 +86,7 @@ const Compare = () => {
             <div className="compare-search-results">
               {searchResults.slice(0, 5).map((p) => (
                 <div key={p._id} className="compare-search-item" onClick={() => addProduct(p)}>
-                  <img src={p.images?.[0]?.url} alt={p.name} />
+                  <img src={p.images?.[0]?.url} alt={p.name} loading="lazy" decoding="async" />
                   <span>{p.name}</span>
                   <FaPlus />
                 </div>
@@ -113,7 +113,7 @@ const Compare = () => {
                       <FaTimes />
                     </button>
                     <Link to={`/product/${p._id}`}>
-                      <img src={p.images?.[0]?.url} alt={p.name} className="compare-img" />
+                      <img src={p.images?.[0]?.url} alt={p.name} className="compare-img" loading="lazy" decoding="async" />
                       <span className="compare-product-name">{p.name}</span>
                     </Link>
                   </th>

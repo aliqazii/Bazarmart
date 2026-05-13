@@ -157,6 +157,13 @@ input:focus, textarea:focus, select:focus {
   outline: none !important;
 }
 
+/* Fix double box effect on header search */
+.header-search input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 option {
   background: #151821 !important;
   color: #FAFAFA !important;
